@@ -40,7 +40,7 @@ function App() {
       <TooltipProvider>
         <AuthProvider>
           <Toaster />
-          <ThemeSuggestion />
+          {/* ThemeSuggestion disabled to keep light mode */}
           <Router />
         </AuthProvider>
       </TooltipProvider>

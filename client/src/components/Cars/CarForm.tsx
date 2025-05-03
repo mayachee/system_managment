@@ -23,7 +23,8 @@ import {
 } from "@/components/ui/select";
 import { Icons } from "@/components/ui/icons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, Upload, X } from "lucide-react";
+import { AlertCircle, Upload, X, Camera, Image as ImageIcon } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const carSchema = z.object({
   make: z.string().min(1, "Make is required"),
@@ -64,10 +65,10 @@ export default function CarForm({ onSubmit, carId, isSubmitting }: CarFormProps)
   
   // Fetch locations for dropdown
   const { 
-    data: locations, 
+    data: locations = [], 
     isLoading: isLoadingLocations,
     error: locationsError
-  } = useQuery({
+  } = useQuery<any[]>({
     queryKey: ["/api/locations"],
   });
   
@@ -76,7 +77,7 @@ export default function CarForm({ onSubmit, carId, isSubmitting }: CarFormProps)
     data: car, 
     isLoading: isLoadingCar,
     error: carError
-  } = useQuery({
+  } = useQuery<any>({
     queryKey: [`/api/cars/${carId}`],
     enabled: !!carId,
   });
@@ -136,7 +137,7 @@ export default function CarForm({ onSubmit, carId, isSubmitting }: CarFormProps)
   };
 
   return (
-    <div>
+    <div className="car-form-container">
       {error && (
         <Alert variant="destructive" className="mb-4">
           <AlertCircle className="h-4 w-4" />
@@ -228,7 +229,7 @@ export default function CarForm({ onSubmit, carId, isSubmitting }: CarFormProps)
                   <Select
                     onValueChange={(value) => field.onChange(parseInt(value))}
                     value={field.value ? field.value.toString() : ""}
-                    disabled={isLoading}
+                    disabled={isLoading || false}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -279,63 +280,188 @@ export default function CarForm({ onSubmit, carId, isSubmitting }: CarFormProps)
             control={form.control}
             name="imageUrl"
             render={({ field }) => (
-              <FormItem>
-                <FormLabel>Car Image</FormLabel>
+              <FormItem className="col-span-2">
+                <FormLabel>Car Images</FormLabel>
                 <FormDescription>
-                  Upload an image of the car to help customers identify it.
+                  Upload images of the car to help customers identify it. We display cars with photos first.
                 </FormDescription>
                 
-                <div className="mt-2">
-                  {imagePreview ? (
-                    <div className="relative w-full max-w-[300px] h-[200px] border rounded-md overflow-hidden">
-                      <img 
-                        src={imagePreview} 
-                        alt="Car preview" 
-                        className="w-full h-full object-cover" 
-                      />
-                      <Button 
-                        type="button"
-                        variant="destructive"
-                        size="sm"
-                        className="absolute top-2 right-2 h-8 w-8 p-0"
-                        onClick={clearImage}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="border border-dashed border-gray-300 dark:border-gray-700 rounded-md p-6 flex flex-col items-center justify-center">
-                      <div className="mb-2">
-                        <Upload className="h-6 w-6 text-gray-500 dark:text-gray-400" />
+                <div className="mt-4 border rounded-md">
+                  <div className="p-4 bg-gray-50 dark:bg-gray-900 border-b">
+                    <h3 className="text-sm font-medium">Pictures of the vehicle</h3>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      We only display cars with photos. You can start with one and add more after your listing is live.
+                    </p>
+                    
+                    <div className="mt-3 flex flex-wrap gap-3">
+                      <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+                        <svg className="h-4 w-4 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="10" />
+                          <path d="M8 12l2 2 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        Use the landscape format
                       </div>
-                      <div className="text-sm text-center text-gray-500 dark:text-gray-400 mb-4">
-                        <span className="font-medium">Click to upload</span> or drag and drop
+                      
+                      <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+                        <svg className="h-4 w-4 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="10" />
+                          <path d="M8 12l2 2 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        Keep the background clear and neutral
                       </div>
-                      <Input 
-                        type="file" 
-                        accept="image/*"
-                        className="hidden"
-                        id="car-image-upload"
-                        onChange={handleImageUpload}
-                        disabled={isUploading}
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => document.getElementById('car-image-upload')?.click()}
-                        disabled={isUploading}
-                      >
-                        {isUploading ? (
-                          <>
-                            <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-                            Uploading...
-                          </>
-                        ) : (
-                          "Select Image"
-                        )}
-                      </Button>
+                      
+                      <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+                        <svg className="h-4 w-4 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="10" />
+                          <path d="M8 12l2 2 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        Follow our image guidelines
+                      </div>
+                      
+                      <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-300">
+                        <svg className="h-4 w-4 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="10" />
+                          <path d="M8 12l2 2 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                        Use only natural daylight
+                      </div>
                     </div>
-                  )}
+                  </div>
+                  
+                  <div className="p-4">
+                    <div className="mb-4">
+                      <h4 className="text-sm font-semibold mb-2">MAIN PICTURE</h4>
+                      <div className="flex flex-col md:flex-row gap-6">
+                        <div className={`relative w-full md:w-1/2 aspect-video border rounded-md overflow-hidden
+                          ${imagePreview ? 'bg-white' : 'bg-gray-100 dark:bg-gray-800'}`}>
+                          {imagePreview ? (
+                            <div className="relative w-full h-full">
+                              <img 
+                                src={imagePreview} 
+                                alt="Car front view" 
+                                className="w-full h-full object-contain" 
+                              />
+                              <Button 
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                className="absolute top-2 right-2 h-8 w-8 p-0"
+                                onClick={clearImage}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center">
+                              <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mb-2">
+                                <Camera className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                              </div>
+                              <span className="text-sm text-gray-500 dark:text-gray-400">3/4 Front</span>
+                              <Input 
+                                type="file" 
+                                accept="image/*"
+                                className="hidden"
+                                id="car-front-image-upload"
+                                onChange={handleImageUpload}
+                                disabled={isUploading}
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="mt-2"
+                                onClick={() => document.getElementById('car-front-image-upload')?.click()}
+                                disabled={isUploading}
+                              >
+                                {isUploading ? "Uploading..." : "Upload"}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                        <div className="md:w-1/2">
+                          <div className="text-sm mb-2">
+                            <span className="font-semibold">A 3/4 front photo</span> that stands out is the first one drivers see.
+                          </div>
+                          {imagePreview && (
+                            <div className="mt-4">
+                              <img src={imagePreview} alt="Car thumbnail" className="w-32 h-auto border rounded object-cover" />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="mb-4">
+                      <h4 className="text-sm font-semibold mb-2">ADDITIONAL PICTURES</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="aspect-video border rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800 flex flex-col items-center justify-center">
+                          <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mb-2">
+                            <Camera className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                          </div>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">Side</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="mt-2"
+                          >
+                            Upload
+                          </Button>
+                        </div>
+                        
+                        <div className="aspect-video border rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800 flex flex-col items-center justify-center">
+                          <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mb-2">
+                            <Camera className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                          </div>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">3/4 Back</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="mt-2"
+                          >
+                            Upload
+                          </Button>
+                        </div>
+                        
+                        <div className="aspect-video border rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800 flex flex-col items-center justify-center">
+                          <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mb-2">
+                            <Camera className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                          </div>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">Interior</span>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="mt-2"
+                          >
+                            Upload
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h4 className="text-sm font-semibold mb-2">EXTRA PHOTOS</h4>
+                      <div className="aspect-video border rounded-md overflow-hidden bg-gray-100 dark:bg-gray-800 flex flex-col items-center justify-center">
+                        <div className="h-10 w-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center mb-2">
+                          <ImageIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
+                        </div>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Extra</span>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 px-4 text-center">
+                          To highlight specifics (trunk, baby seat...)
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="mt-2"
+                        >
+                          Upload
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 
                 <FormMessage />
@@ -352,7 +478,7 @@ export default function CarForm({ onSubmit, carId, isSubmitting }: CarFormProps)
             >
               Reset
             </Button>
-            <Button type="submit" disabled={isSubmitting || isLoading}>
+            <Button type="submit" disabled={isSubmitting || (isLoading || false)}>
               {isSubmitting ? (
                 <>
                   <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />

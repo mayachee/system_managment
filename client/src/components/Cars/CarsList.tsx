@@ -189,7 +189,7 @@ export default function CarsList({ cars, isAdmin, onEdit, onDelete }: CarsListPr
                         <div className="flex items-center">
                           <div className="h-10 w-10 flex-shrink-0 mr-3">
                             <img 
-                              src={getCarImageUrl(index)} 
+                              src={getCarImageUrl(car)} 
                               alt={`${car.make} ${car.model}`} 
                               className="h-10 w-10 rounded-md object-cover" 
                             />

@@ -93,17 +93,21 @@ export default function CarsPage() {
     }
   };
   
-  const filteredCars = cars?.filter(car => {
-    if (!searchQuery) return true;
-    const query = searchQuery.toLowerCase();
-    return (
-      car.make.toLowerCase().includes(query) ||
-      car.model.toLowerCase().includes(query) ||
-      car.carId.toLowerCase().includes(query) ||
-      car.status.toLowerCase().includes(query) ||
-      car.location?.name.toLowerCase().includes(query)
-    );
-  });
+  // Type check and safely filter cars
+  const filteredCars = Array.isArray(cars) 
+    ? cars.filter((car: any) => {
+        if (!searchQuery) return true;
+        const query = searchQuery.toLowerCase();
+        return (
+          car.make?.toLowerCase().includes(query) ||
+          car.model?.toLowerCase().includes(query) ||
+          car.carId?.toLowerCase().includes(query) ||
+          car.status?.toLowerCase().includes(query) ||
+          car.location?.name?.toLowerCase().includes(query) || 
+          false
+        );
+      })
+    : [];
 
   return (
     <AppLayout>
@@ -161,8 +165,8 @@ export default function CarsPage() {
         open={isDialogOpen} 
         onOpenChange={setIsDialogOpen}
       >
-        <DialogContent className="sm:max-w-[600px]">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[700px] max-h-[90vh] p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-2 sticky top-0 z-20 bg-white dark:bg-gray-950">
             <DialogTitle>
               {selectedCarId ? "Edit Car" : "Add New Car"}
             </DialogTitle>
@@ -174,11 +178,23 @@ export default function CarsPage() {
             </DialogDescription>
           </DialogHeader>
           
-          <CarForm 
-            onSubmit={handleFormSubmit}
-            carId={selectedCarId}
-            isSubmitting={createCarMutation.isPending || updateCarMutation.isPending}
-          />
+          <div className="px-6 pb-16 pt-2 overflow-auto max-h-[calc(90vh-120px)]">
+            <CarForm 
+              onSubmit={handleFormSubmit}
+              carId={selectedCarId}
+              isSubmitting={createCarMutation.isPending || updateCarMutation.isPending}
+            />
+          </div>
+          
+          <div className="absolute bottom-0 left-0 right-0 py-3 px-6 border-t bg-white dark:bg-gray-950 shadow-md flex justify-end z-20">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsDialogOpen(false)}
+              className="mr-2"
+            >
+              Cancel
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </AppLayout>

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { MoonIcon, SunIcon, Search, Menu, X, Bell, HelpCircle, ChevronDown } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
 import { TimeThemeIndicator } from "@/components/TimeThemeIndicator";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -54,15 +55,15 @@ export function AppLayout({ children }: AppLayoutProps) {
   };
 
   const toggleTheme = () => {
-    // Get the current effective theme (accounting for system preference)
-    const currentTheme = theme === 'system'
-      ? window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-      : theme;
-      
-    // Toggle to the opposite theme
-    const newTheme = currentTheme === "dark" ? "light" : "dark";
-    console.log(`Toggling theme from ${currentTheme} to ${newTheme}`);
-    setTheme(newTheme);
+    // Always set theme to light regardless of current state
+    setTheme("light");
+    console.log("Setting theme to light");
+    
+    // Force light mode
+    const root = window.document.documentElement;
+    root.classList.remove("dark");
+    root.classList.add("light");
+    root.dataset.theme = "light";
   };
 
   const getInitials = (name: string) => {
@@ -217,17 +218,8 @@ export function AppLayout({ children }: AppLayoutProps) {
                     onClick={toggleTheme}
                     className="text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
                   >
-                    {(() => {
-                      // Get current effective theme
-                      const effectiveTheme = theme === 'system'
-                        ? window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
-                        : theme;
-                      
-                      // Return the appropriate icon
-                      return effectiveTheme === "dark" 
-                        ? <SunIcon className="h-5 w-5" /> 
-                        : <MoonIcon className="h-5 w-5" />;
-                    })()}
+                    {/* Always show moon icon since we're in light mode */}
+                    <MoonIcon className="h-5 w-5" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -295,24 +287,14 @@ export function AppLayout({ children }: AppLayoutProps) {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 overflow-y-auto bg-neutral-50 dark:bg-neutral-900 p-4 md:p-6">
+        <main className="flex-1 overflow-y-auto bg-neutral-50 dark:bg-neutral-900 p-4 md:p-6 relative">
           {children}
+          
+          {/* Floating theme toggle removed to keep light mode */}
         </main>
       </div>
     </div>
   );
 }
 
-// Icon set
-export const AppIcons = {
-  dashboard: <Icons.dashboard />,
-  car: <Icons.car />,
-  calendar: <Icons.calendar />,
-  location: <Icons.location />,
-  user: <Icons.user />,
-  userSettings: <Icons.userSettings />,
-  settings: <Icons.settings />,
-  logout: <Icons.logout />,
-  time: <Icons.time />,
-  insurance: <Icons.insurance />,
-};
+// Icon set is now part of the Icons component in ui/icons.tsx

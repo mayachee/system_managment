@@ -4,7 +4,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
 import { Button } from "@/components/ui/button";
 import { Icons } from "@/components/ui/icons";
-import { MoonIcon, SunIcon, Globe, Bell, Key } from "lucide-react";
+import { MoonIcon, SunIcon, Globe, Bell, Key, Clock } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -34,7 +34,12 @@ import { ActiveMeTheme } from "@/components/ActiveMeTheme";
 
 export default function SettingsPage() {
   const { user } = useAuth();
-  const { theme, setTheme } = useTheme();
+  const { 
+    theme, 
+    setTheme, 
+    autoThemeSwitching, 
+    toggleAutoThemeSwitching 
+  } = useTheme();
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("general");
   
@@ -280,6 +285,52 @@ export default function SettingsPage() {
                         onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")} 
                       />
                       <MoonIcon className="h-5 w-5 text-neutral-500" />
+                    </div>
+                  </div>
+                  
+                  {/* Auto Theme Switching Feature */}
+                  <div className="pt-4">
+                    <div className="p-4 border rounded-lg bg-neutral-50 dark:bg-neutral-900">
+                      <h3 className="text-lg font-semibold mb-1 flex items-center gap-2">
+                        <Clock className="h-5 w-5 text-primary" />
+                        Time-Based Theme
+                      </h3>
+                      <p className="text-sm text-neutral-500 dark:text-neutral-400 mb-3">
+                        Automatically adjusts your theme based on the time of day. Uses light mode during
+                        daytime for better productivity, and dark mode in the evening to reduce eye strain.
+                      </p>
+                      
+                      <div className="p-3 bg-sky-50 dark:bg-sky-900/30 rounded-lg border border-sky-100 dark:border-sky-900 mb-4">
+                        <p className="text-sm text-sky-700 dark:text-sky-300 flex items-start">
+                          <span className="mr-2 mt-0.5"><Clock className="h-4 w-4" /></span>
+                          <span>
+                            <span className="font-medium">Time-based theme schedule:</span>
+                            <br />
+                            5AM-8AM: Light mode (helps wake up)
+                            <br />
+                            8AM-5PM: Light mode (productivity)
+                            <br />
+                            5PM-7PM: Light mode (evening transition)
+                            <br />
+                            7PM-10PM: Dark mode (evening wind down)
+                            <br />
+                            10PM-5AM: Dark mode (better sleep quality)
+                          </span>
+                        </p>
+                      </div>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-0.5">
+                          <Label className="font-medium">Auto Theme Switching</Label>
+                          <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                            Automatically switch themes based on time of day
+                          </p>
+                        </div>
+                        <Switch 
+                          checked={autoThemeSwitching}
+                          onCheckedChange={toggleAutoThemeSwitching}
+                        />
+                      </div>
                     </div>
                   </div>
                   
