@@ -5,6 +5,7 @@ import { Icons } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { MoonIcon, SunIcon, Search, Menu, X, Bell, HelpCircle, ChevronDown } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
+import { TimeThemeIndicator } from "@/components/TimeThemeIndicator";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +32,7 @@ export function AppLayout({ children }: AppLayoutProps) {
     { href: "/", label: "Dashboard", icon: <Icons.dashboard className="mr-3 text-lg" /> },
     { href: "/rentals", label: "Rentals", icon: <Icons.calendar className="mr-3 text-lg" /> },
     { href: "/cars", label: "Cars", icon: <Icons.car className="mr-3 text-lg" /> },
+    { href: "/insurance", label: "Insurance Overview", icon: <Icons.insurance className="mr-3 text-lg" /> },
   ];
 
   const adminNavItems = [
@@ -40,7 +42,7 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   const accountNavItems = [
     { href: "/profile", label: "Profile", icon: <Icons.user className="mr-3 text-lg" /> },
-    { href: "#settings", label: "Settings", icon: <Icons.settings className="mr-3 text-lg" /> },
+    { href: "/settings", label: "Settings", icon: <Icons.settings className="mr-3 text-lg" /> },
   ];
 
   const isActive = (path: string) => {
@@ -52,7 +54,15 @@ export function AppLayout({ children }: AppLayoutProps) {
   };
 
   const toggleTheme = () => {
-    setTheme(theme === "dark" ? "light" : "dark");
+    // Get the current effective theme (accounting for system preference)
+    const currentTheme = theme === 'system'
+      ? window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+      : theme;
+      
+    // Toggle to the opposite theme
+    const newTheme = currentTheme === "dark" ? "light" : "dark";
+    console.log(`Toggling theme from ${currentTheme} to ${newTheme}`);
+    setTheme(newTheme);
   };
 
   const getInitials = (name: string) => {
@@ -198,6 +208,7 @@ export function AppLayout({ children }: AppLayoutProps) {
             
             {/* Right side nav items */}
             <div className="flex items-center space-x-4">
+              <TimeThemeIndicator />
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -206,7 +217,17 @@ export function AppLayout({ children }: AppLayoutProps) {
                     onClick={toggleTheme}
                     className="text-neutral-500 hover:text-neutral-700 dark:text-neutral-400 dark:hover:text-neutral-200"
                   >
-                    {theme === "dark" ? <SunIcon className="h-5 w-5" /> : <MoonIcon className="h-5 w-5" />}
+                    {(() => {
+                      // Get current effective theme
+                      const effectiveTheme = theme === 'system'
+                        ? window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+                        : theme;
+                      
+                      // Return the appropriate icon
+                      return effectiveTheme === "dark" 
+                        ? <SunIcon className="h-5 w-5" /> 
+                        : <MoonIcon className="h-5 w-5" />;
+                    })()}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
@@ -260,7 +281,9 @@ export function AppLayout({ children }: AppLayoutProps) {
                   <Link href="/profile">
                     <DropdownMenuItem className="cursor-pointer">Profile</DropdownMenuItem>
                   </Link>
-                  <DropdownMenuItem className="cursor-pointer">Settings</DropdownMenuItem>
+                  <Link href="/settings">
+                    <DropdownMenuItem className="cursor-pointer">Settings</DropdownMenuItem>
+                  </Link>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
                     Logout
@@ -291,4 +314,5 @@ export const AppIcons = {
   settings: <Icons.settings />,
   logout: <Icons.logout />,
   time: <Icons.time />,
+  insurance: <Icons.insurance />,
 };

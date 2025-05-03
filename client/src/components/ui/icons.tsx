@@ -22,6 +22,7 @@ import {
   X,
   Menu,
   Eye,
+  Shield,
 } from "lucide-react";
 import { SiGoogle } from 'react-icons/si';
 
@@ -47,6 +48,7 @@ export const Icons = {
   chevronRight: ChevronRight,
   more: MoreHorizontal,
   close: X,
+  insurance: Shield,
   menu: Menu,
   view: Eye,
   google: SiGoogle,

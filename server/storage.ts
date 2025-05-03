@@ -4,11 +4,18 @@ import {
   Location, InsertLocation,
   Rental, InsertRental,
   LoginHistory, InsertLoginHistory,
+  CarInsurance, InsertCarInsurance,
+  UserInsurance, InsertUserInsurance,
+  users, cars, locations, rentals, loginHistory, carInsurances, userInsurances
 } from "@shared/schema";
 import session from "express-session";
 import createMemoryStore from "memorystore";
+import connectPg from "connect-pg-simple";
+import { db, pool } from "./db";
+import { eq, and, or, gte, lte, desc } from "drizzle-orm";
 
 const MemoryStore = createMemoryStore(session);
+const PostgresSessionStore = connectPg(session);
 
 export interface IStorage {
   // User operations
@@ -50,251 +57,337 @@ export interface IStorage {
   getUserLoginHistory(userId: number): Promise<LoginHistory[]>;
   getAllLoginHistory(): Promise<LoginHistory[]>;
   
+  // Car Insurance operations
+  getCarInsurance(id: number): Promise<CarInsurance | undefined>;
+  getCarInsuranceByCarId(carId: number): Promise<CarInsurance | undefined>;
+  createCarInsurance(insurance: InsertCarInsurance): Promise<CarInsurance>;
+  updateCarInsurance(id: number, insurance: Partial<CarInsurance>): Promise<CarInsurance | undefined>;
+  deleteCarInsurance(id: number): Promise<boolean>;
+  getAllCarInsurances(): Promise<CarInsurance[]>;
+  
+  // User Insurance operations
+  getUserInsurance(id: number): Promise<UserInsurance | undefined>;
+  getUserInsuranceByUserId(userId: number): Promise<UserInsurance | undefined>;
+  createUserInsurance(insurance: InsertUserInsurance): Promise<UserInsurance>;
+  updateUserInsurance(id: number, insurance: Partial<UserInsurance>): Promise<UserInsurance | undefined>;
+  deleteUserInsurance(id: number): Promise<boolean>;
+  getAllUserInsurances(): Promise<UserInsurance[]>;
+  
   // Session store
-  sessionStore: session.SessionStore;
+  sessionStore: any;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<number, User>;
-  private cars: Map<number, Car>;
-  private locations: Map<number, Location>;
-  private rentals: Map<number, Rental>;
-  private loginHistories: Map<number, LoginHistory>;
-  
-  sessionStore: session.SessionStore;
-  
-  private userIdCounter: number;
-  private carIdCounter: number;
-  private locationIdCounter: number;
-  private rentalIdCounter: number;
-  private loginHistoryIdCounter: number;
+export class DatabaseStorage implements IStorage {
+  sessionStore: any;
 
   constructor() {
-    this.users = new Map();
-    this.cars = new Map();
-    this.locations = new Map();
-    this.rentals = new Map();
-    this.loginHistories = new Map();
-    
-    this.userIdCounter = 1;
-    this.carIdCounter = 1;
-    this.locationIdCounter = 1;
-    this.rentalIdCounter = 1;
-    this.loginHistoryIdCounter = 1;
-    
-    this.sessionStore = new MemoryStore({
-      checkPeriod: 86400000, // 24h
-    });
-    
-    // Add admin user on initialization
-    this.createUser({
-      username: "admin",
-      password: "admin", // Will be hashed in auth.ts
-      email: "admin@carrental.com",
-      role: "admin"
+    this.sessionStore = new PostgresSessionStore({ 
+      pool, 
+      createTableIfMissing: true,
+      tableName: 'session'
     });
   }
 
   // User operations
   async getUser(id: number): Promise<User | undefined> {
-    return this.users.get(id);
+    const result = await db.select().from(users).where(eq(users.id, id));
+    return result[0];
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(user => user.username === username);
+    const result = await db.select().from(users).where(eq(users.username, username));
+    return result[0];
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    const id = this.userIdCounter++;
-    const newUser: User = { ...user, id };
-    this.users.set(id, newUser);
-    return newUser;
+    const result = await db.insert(users).values(user).returning();
+    return result[0];
   }
 
   async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
-    const user = await this.getUser(id);
-    if (!user) return undefined;
-    
-    const updatedUser = { ...user, ...userData };
-    this.users.set(id, updatedUser);
-    return updatedUser;
+    const result = await db.update(users)
+      .set(userData)
+      .where(eq(users.id, id))
+      .returning();
+    return result[0];
   }
 
   async deleteUser(id: number): Promise<boolean> {
-    return this.users.delete(id);
+    const result = await db.delete(users).where(eq(users.id, id));
+    return !!result;
   }
 
   async getAllUsers(): Promise<User[]> {
-    return Array.from(this.users.values());
+    return await db.select().from(users);
   }
 
   // Car operations
   async getCar(id: number): Promise<Car | undefined> {
-    return this.cars.get(id);
+    const result = await db.select().from(cars).where(eq(cars.id, id));
+    return result[0];
   }
 
   async getCarByCarId(carId: string): Promise<Car | undefined> {
-    return Array.from(this.cars.values()).find(car => car.carId === carId);
+    const result = await db.select().from(cars).where(eq(cars.carId, carId));
+    return result[0];
   }
 
   async createCar(car: InsertCar): Promise<Car> {
-    const id = this.carIdCounter++;
-    const newCar: Car = { ...car, id };
-    this.cars.set(id, newCar);
-    return newCar;
+    const result = await db.insert(cars).values(car).returning();
+    return result[0];
   }
 
   async updateCar(id: number, carData: Partial<Car>): Promise<Car | undefined> {
-    const car = await this.getCar(id);
-    if (!car) return undefined;
-    
-    const updatedCar = { ...car, ...carData };
-    this.cars.set(id, updatedCar);
-    return updatedCar;
+    const result = await db.update(cars)
+      .set(carData)
+      .where(eq(cars.id, id))
+      .returning();
+    return result[0];
   }
 
   async deleteCar(id: number): Promise<boolean> {
-    return this.cars.delete(id);
+    const result = await db.delete(cars).where(eq(cars.id, id));
+    return !!result;
   }
 
   async getAllCars(): Promise<Car[]> {
-    return Array.from(this.cars.values());
+    return await db.select().from(cars);
   }
 
   async getAvailableCars(): Promise<Car[]> {
-    return Array.from(this.cars.values()).filter(car => car.status === "available");
+    return await db.select().from(cars).where(eq(cars.status, "available"));
   }
 
   // Location operations
   async getLocation(id: number): Promise<Location | undefined> {
-    return this.locations.get(id);
+    const result = await db.select().from(locations).where(eq(locations.id, id));
+    return result[0];
   }
 
   async createLocation(location: InsertLocation): Promise<Location> {
-    const id = this.locationIdCounter++;
-    const newLocation: Location = { ...location, id };
-    this.locations.set(id, newLocation);
-    return newLocation;
+    const result = await db.insert(locations).values(location).returning();
+    return result[0];
   }
 
   async updateLocation(id: number, locationData: Partial<Location>): Promise<Location | undefined> {
-    const location = await this.getLocation(id);
-    if (!location) return undefined;
-    
-    const updatedLocation = { ...location, ...locationData };
-    this.locations.set(id, updatedLocation);
-    return updatedLocation;
+    const result = await db.update(locations)
+      .set(locationData)
+      .where(eq(locations.id, id))
+      .returning();
+    return result[0];
   }
 
   async deleteLocation(id: number): Promise<boolean> {
-    return this.locations.delete(id);
+    const result = await db.delete(locations).where(eq(locations.id, id));
+    return !!result;
   }
 
   async getAllLocations(): Promise<Location[]> {
-    return Array.from(this.locations.values());
+    return await db.select().from(locations);
   }
 
   // Rental operations
   async getRental(id: number): Promise<Rental | undefined> {
-    return this.rentals.get(id);
+    const result = await db.select().from(rentals).where(eq(rentals.id, id));
+    return result[0];
   }
 
   async createRental(rental: InsertRental): Promise<Rental> {
-    const id = this.rentalIdCounter++;
-    const newRental: Rental = { ...rental, id };
-    this.rentals.set(id, newRental);
+    // First create the rental
+    const result = await db.insert(rentals).values(rental).returning();
+    const newRental = result[0];
     
-    // Update car status to rented
-    const car = await this.getCar(rental.carId);
-    if (car) {
-      await this.updateCar(car.id, { status: "rented" });
-    }
+    // Then update the car status to rented
+    await db.update(cars)
+      .set({ status: "rented" })
+      .where(eq(cars.id, rental.carId));
     
     return newRental;
   }
 
   async updateRental(id: number, rentalData: Partial<Rental>): Promise<Rental | undefined> {
-    const rental = await this.getRental(id);
-    if (!rental) return undefined;
+    // Get the current rental
+    const [currentRental] = await db.select().from(rentals).where(eq(rentals.id, id));
+    if (!currentRental) return undefined;
     
-    const updatedRental = { ...rental, ...rentalData };
-    this.rentals.set(id, updatedRental);
+    // Update the rental
+    const result = await db.update(rentals)
+      .set(rentalData)
+      .where(eq(rentals.id, id))
+      .returning();
     
     // If status is changing to completed, update car availability
-    if (rentalData.status === "completed" && rental.status !== "completed") {
-      const car = await this.getCar(rental.carId);
-      if (car) {
-        await this.updateCar(car.id, { status: "available" });
-      }
+    if (rentalData.status === "completed" && currentRental.status !== "completed") {
+      await db.update(cars)
+        .set({ status: "available" })
+        .where(eq(cars.id, currentRental.carId));
     }
     
-    return updatedRental;
+    return result[0];
   }
 
   async deleteRental(id: number): Promise<boolean> {
-    return this.rentals.delete(id);
+    const result = await db.delete(rentals).where(eq(rentals.id, id));
+    return !!result;
   }
 
   async getAllRentals(): Promise<Rental[]> {
-    return Array.from(this.rentals.values());
+    return await db.select().from(rentals);
   }
 
   async getUserRentals(userId: number): Promise<Rental[]> {
-    return Array.from(this.rentals.values()).filter(rental => rental.userId === userId);
+    return await db.select().from(rentals).where(eq(rentals.userId, userId));
   }
 
   async isCarAvailable(carId: number, startDate: Date, endDate: Date, excludeRentalId?: number): Promise<boolean> {
     // Check if car exists and is available
-    const car = await this.getCar(carId);
+    const [car] = await db.select().from(cars).where(eq(cars.id, carId));
     if (!car || (car.status !== "available" && car.status !== "rented")) return false;
     
-    // Find any overlapping rentals
-    const overlappingRentals = Array.from(this.rentals.values()).filter(rental => {
-      // Skip the current rental when checking (for updates)
-      if (excludeRentalId && rental.id === excludeRentalId) return false;
-      
-      // Skip completed or cancelled rentals
-      if (rental.status !== "active") return false;
-      
-      // Check for the same car
-      if (rental.carId !== carId) return false;
-      
-      // Check for date overlap
-      const rentalStart = new Date(rental.startDate);
-      const rentalEnd = new Date(rental.endDate);
-      
-      return (
-        (startDate >= rentalStart && startDate <= rentalEnd) || // Start date overlaps
-        (endDate >= rentalStart && endDate <= rentalEnd) || // End date overlaps
-        (startDate <= rentalStart && endDate >= rentalEnd) // Completely encompasses the rental
-      );
-    });
+    // Convert dates to strings for comparison
+    const startDateStr = startDate.toISOString();
+    const endDateStr = endDate.toISOString();
+    
+    // Build query with raw SQL conditions to avoid type issues
+    let query = `
+      SELECT * FROM rentals 
+      WHERE car_id = $1 
+      AND status = 'active'
+      AND (
+        (start_date >= $2 AND start_date <= $3) OR
+        (end_date >= $2 AND end_date <= $3) OR
+        (start_date <= $2 AND end_date >= $3)
+      )
+    `;
+    
+    const params: any[] = [carId, startDateStr, endDateStr];
+    
+    // Add exclusion if needed
+    if (excludeRentalId) {
+      query += ` AND id != $4`;
+      params.push(excludeRentalId);
+    }
+    
+    // Execute the query
+    const { rows: overlappingRentals } = await pool.query(query, params);
     
     return overlappingRentals.length === 0;
   }
 
   // Login history operations
   async getLoginHistory(id: number): Promise<LoginHistory | undefined> {
-    return this.loginHistories.get(id);
+    const result = await db.select().from(loginHistory).where(eq(loginHistory.id, id));
+    return result[0];
   }
 
-  async createLoginHistory(loginHistory: InsertLoginHistory): Promise<LoginHistory> {
-    const id = this.loginHistoryIdCounter++;
-    const newLoginHistory: LoginHistory = { ...loginHistory, id };
-    this.loginHistories.set(id, newLoginHistory);
-    return newLoginHistory;
+  async createLoginHistory(history: InsertLoginHistory): Promise<LoginHistory> {
+    const result = await db.insert(loginHistory).values(history).returning();
+    return result[0];
   }
 
   async getUserLoginHistory(userId: number): Promise<LoginHistory[]> {
-    return Array.from(this.loginHistories.values())
-      .filter(history => history.userId === userId)
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return await db.select()
+      .from(loginHistory)
+      .where(eq(loginHistory.userId, userId))
+      .orderBy(desc(loginHistory.timestamp));
   }
 
   async getAllLoginHistory(): Promise<LoginHistory[]> {
-    return Array.from(this.loginHistories.values())
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return await db.select()
+      .from(loginHistory)
+      .orderBy(desc(loginHistory.timestamp));
+  }
+
+  // Car Insurance operations
+  async getCarInsurance(id: number): Promise<CarInsurance | undefined> {
+    const result = await db.select().from(carInsurances).where(eq(carInsurances.id, id));
+    return result[0];
+  }
+
+  async getCarInsuranceByCarId(carId: number): Promise<CarInsurance | undefined> {
+    const result = await db.select().from(carInsurances).where(eq(carInsurances.carId, carId));
+    return result[0];
+  }
+
+  async createCarInsurance(insurance: InsertCarInsurance): Promise<CarInsurance> {
+    const result = await db.insert(carInsurances).values(insurance).returning();
+    return result[0];
+  }
+
+  async updateCarInsurance(id: number, insuranceData: Partial<CarInsurance>): Promise<CarInsurance | undefined> {
+    const result = await db.update(carInsurances)
+      .set(insuranceData)
+      .where(eq(carInsurances.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteCarInsurance(id: number): Promise<boolean> {
+    const result = await db.delete(carInsurances).where(eq(carInsurances.id, id));
+    return !!result;
+  }
+
+  async getAllCarInsurances(): Promise<CarInsurance[]> {
+    return await db.select().from(carInsurances);
+  }
+
+  // User Insurance operations
+  async getUserInsurance(id: number): Promise<UserInsurance | undefined> {
+    const result = await db.select().from(userInsurances).where(eq(userInsurances.id, id));
+    return result[0];
+  }
+
+  async getUserInsuranceByUserId(userId: number): Promise<UserInsurance | undefined> {
+    const result = await db.select().from(userInsurances).where(eq(userInsurances.userId, userId));
+    return result[0];
+  }
+
+  async createUserInsurance(insurance: InsertUserInsurance): Promise<UserInsurance> {
+    const result = await db.insert(userInsurances).values(insurance).returning();
+    return result[0];
+  }
+
+  async updateUserInsurance(id: number, insuranceData: Partial<UserInsurance>): Promise<UserInsurance | undefined> {
+    const result = await db.update(userInsurances)
+      .set(insuranceData)
+      .where(eq(userInsurances.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteUserInsurance(id: number): Promise<boolean> {
+    const result = await db.delete(userInsurances).where(eq(userInsurances.id, id));
+    return !!result;
+  }
+
+  async getAllUserInsurances(): Promise<UserInsurance[]> {
+    return await db.select().from(userInsurances);
   }
 }
 
-export const storage = new MemStorage();
+// Initialize database storage with admin user
+export const storage = new DatabaseStorage();
+
+// This function is called when the server starts up to ensure admin user exists
+async function initializeDb() {
+  try {
+    // Check if admin user exists
+    const adminUser = await storage.getUserByUsername("admin");
+    
+    // If no admin, create one
+    if (!adminUser) {
+      console.log("Creating admin user...");
+      await storage.createUser({
+        username: "admin",
+        password: "admin", // Will be hashed in auth.ts
+        email: "admin@carrental.com",
+        role: "admin"
+      });
+    }
+  } catch (error) {
+    console.error("Error initializing database:", error);
+  }
+}
+
+// Call the initialization function
+initializeDb();

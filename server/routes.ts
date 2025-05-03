@@ -5,15 +5,64 @@ import { storage } from "./storage";
 import { z } from "zod";
 import { ZodError } from "zod";
 import { fromZodError } from "zod-validation-error";
+import { createProxyMiddleware } from 'http-proxy-middleware';
+import { scrypt, randomBytes, timingSafeEqual } from "crypto";
+import { promisify } from "util";
 import { 
   insertCarSchema, 
   insertLocationSchema,
   insertRentalSchema, 
   insertUserSchema,
-  insertLoginHistorySchema
+  insertLoginHistorySchema,
+  insertCarInsuranceSchema,
+  insertUserInsuranceSchema
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Fallback handler function for when Django is unavailable
+  const djangoFallback = (req: any, res: any, next: any) => {
+    // Continue to the next middleware by removing the /django prefix
+    req.url = req.url.replace('/django', '');
+    req.originalUrl = req.originalUrl.replace('/django', '');
+    next();
+  };
+
+  // Configure proxy middleware to Django backend
+  // This allows us to gradually transition endpoints from Express to Django
+  const djangoProxy = createProxyMiddleware({
+    target: 'http://localhost:8000',
+    changeOrigin: true,
+    pathRewrite: {
+      // Map Express routes to Django routes
+      '^/api/django-test': '/api/test-connection',  // Test endpoint to verify connection
+      '^/api/django/dashboard/stats': '/api/dashboard/stats',
+      '^/api/django/dashboard/activity': '/api/dashboard/activity',
+      '^/api/django/dashboard/popular-cars': '/api/dashboard/popular-cars',
+    },
+    // Handle proxy errors - when Django server is unavailable, fallback to Express
+    onError: (err: Error, req: any, res: any) => {
+      console.warn('Django proxy error:', err.message);
+      console.log('Falling back to Express.js implementation...');
+      
+      // We can't call next() directly from here, so we just end the response
+      // The client will retry and hit our fallback routes
+      res.writeHead(502, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ 
+        message: 'Django server unavailable, please retry your request',
+        error: err.message 
+      }));
+    }
+  } as any);
+  
+  // Apply the proxy middleware to specific paths with fallback routes
+  app.use('/api/django-test', djangoProxy);
+  
+  // Django proxies for dashboard endpoints with fallbacks to Express versions
+  // Pattern: First try Django route, if it fails, fall back to Express route
+  app.get('/api/django/dashboard/stats', djangoProxy);
+  app.get('/api/django/dashboard/activity', djangoProxy);
+  app.get('/api/django/dashboard/popular-cars', djangoProxy);
+  
   // Set up authentication routes
   setupAuth(app);
 
@@ -841,6 +890,363 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const loginHistory = await storage.getUserLoginHistory(userId);
       
       res.json(loginHistory);
+    } catch (error) {
+      res.status(500).json({ message: "Server error", error: error.message });
+    }
+  });
+
+  // Car Insurance routes
+  // Get all car insurances
+  app.get("/api/car-insurances", requireAuth, async (req, res) => {
+    try {
+      const carInsurances = await storage.getAllCarInsurances();
+      
+      // Attach car data to each insurance policy
+      const populatedInsurances = await Promise.all(carInsurances.map(async (insurance) => {
+        const car = await storage.getCar(insurance.carId);
+        return {
+          ...insurance,
+          car: car ? {
+            id: car.id,
+            make: car.make,
+            model: car.model,
+            year: car.year,
+            carId: car.carId
+          } : null
+        };
+      }));
+      
+      res.json(populatedInsurances);
+    } catch (error) {
+      res.status(500).json({ message: "Server error", error: error.message });
+    }
+  });
+  
+  // Get car insurance by ID
+  app.get("/api/car-insurances/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const insurance = await storage.getCarInsurance(id);
+      
+      if (!insurance) {
+        return res.status(404).json({ message: "Car insurance policy not found" });
+      }
+      
+      const car = await storage.getCar(insurance.carId);
+      
+      res.json({
+        ...insurance,
+        car: car ? {
+          id: car.id,
+          make: car.make,
+          model: car.model,
+          year: car.year,
+          carId: car.carId
+        } : null
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Server error", error: error.message });
+    }
+  });
+  
+  // Get insurance for a specific car
+  app.get("/api/cars/:id/insurance", requireAuth, async (req, res) => {
+    try {
+      const carId = parseInt(req.params.id);
+      const car = await storage.getCar(carId);
+      
+      if (!car) {
+        return res.status(404).json({ message: "Car not found" });
+      }
+      
+      const insurance = await storage.getCarInsuranceByCarId(carId);
+      
+      if (!insurance) {
+        return res.status(404).json({ message: "No insurance policy found for this car" });
+      }
+      
+      res.json(insurance);
+    } catch (error) {
+      res.status(500).json({ message: "Server error", error: error.message });
+    }
+  });
+  
+  // Create car insurance (admin only)
+  app.post("/api/car-insurances", requireAdmin, async (req, res) => {
+    try {
+      const insuranceData = insertCarInsuranceSchema.parse(req.body);
+      
+      // Check if car exists
+      const car = await storage.getCar(insuranceData.carId);
+      if (!car) {
+        return res.status(400).json({ message: "Invalid car ID" });
+      }
+      
+      // Check if policy number is unique
+      const existingInsurance = await storage.getAllCarInsurances();
+      const policyExists = existingInsurance.some(ins => ins.policyNumber === insuranceData.policyNumber);
+      if (policyExists) {
+        return res.status(400).json({ message: "Policy number already exists" });
+      }
+      
+      // Check if car already has insurance
+      const carInsurance = await storage.getCarInsuranceByCarId(insuranceData.carId);
+      if (carInsurance) {
+        return res.status(400).json({ message: "Car already has insurance. Update the existing policy instead." });
+      }
+      
+      const insurance = await storage.createCarInsurance(insuranceData);
+      res.status(201).json(insurance);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      res.status(500).json({ message: "Server error", error: error.message });
+    }
+  });
+  
+  // Update car insurance (admin only)
+  app.put("/api/car-insurances/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const insurance = await storage.getCarInsurance(id);
+      
+      if (!insurance) {
+        return res.status(404).json({ message: "Car insurance policy not found" });
+      }
+      
+      // Validate the update data
+      const updateData = req.body;
+      
+      // If car ID is being updated, check if car exists
+      if (updateData.carId && updateData.carId !== insurance.carId) {
+        const car = await storage.getCar(updateData.carId);
+        if (!car) {
+          return res.status(400).json({ message: "Invalid car ID" });
+        }
+        
+        // Check if new car already has insurance
+        const carInsurance = await storage.getCarInsuranceByCarId(updateData.carId);
+        if (carInsurance && carInsurance.id !== id) {
+          return res.status(400).json({ message: "Car already has insurance" });
+        }
+      }
+      
+      // If policy number is being updated, check if it's unique
+      if (updateData.policyNumber && updateData.policyNumber !== insurance.policyNumber) {
+        const existingInsurance = await storage.getAllCarInsurances();
+        const policyExists = existingInsurance.some(
+          ins => ins.policyNumber === updateData.policyNumber && ins.id !== id
+        );
+        if (policyExists) {
+          return res.status(400).json({ message: "Policy number already exists" });
+        }
+      }
+      
+      const updatedInsurance = await storage.updateCarInsurance(id, updateData);
+      res.json(updatedInsurance);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      res.status(500).json({ message: "Server error", error: error.message });
+    }
+  });
+  
+  // Delete car insurance (admin only)
+  app.delete("/api/car-insurances/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const insurance = await storage.getCarInsurance(id);
+      
+      if (!insurance) {
+        return res.status(404).json({ message: "Car insurance policy not found" });
+      }
+      
+      await storage.deleteCarInsurance(id);
+      res.status(204).send();
+    } catch (error) {
+      res.status(500).json({ message: "Server error", error: error.message });
+    }
+  });
+  
+  // User Insurance routes
+  // Get all user insurances
+  app.get("/api/user-insurances", requireAuth, async (req, res) => {
+    try {
+      const userInsurances = await storage.getAllUserInsurances();
+      
+      // Attach user data to each insurance policy
+      const populatedInsurances = await Promise.all(userInsurances.map(async (insurance) => {
+        const user = await storage.getUser(insurance.userId);
+        return {
+          ...insurance,
+          user: user ? {
+            id: user.id,
+            username: user.username,
+            email: user.email,
+            role: user.role
+          } : null
+        };
+      }));
+      
+      res.json(populatedInsurances);
+    } catch (error) {
+      res.status(500).json({ message: "Server error", error: error.message });
+    }
+  });
+  
+  // Get user insurance by ID
+  app.get("/api/user-insurances/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const insurance = await storage.getUserInsurance(id);
+      
+      if (!insurance) {
+        return res.status(404).json({ message: "User insurance policy not found" });
+      }
+      
+      const user = await storage.getUser(insurance.userId);
+      
+      res.json({
+        ...insurance,
+        user: user ? {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          role: user.role
+        } : null
+      });
+    } catch (error) {
+      res.status(500).json({ message: "Server error", error: error.message });
+    }
+  });
+  
+  // Get insurance for a specific user
+  app.get("/api/users/:id/insurance", requireAuth, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.id);
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Regular users can only view their own insurance
+      if (req.user.role !== "admin" && req.user.id !== userId) {
+        return res.status(403).json({ message: "Forbidden" });
+      }
+      
+      const insurance = await storage.getUserInsuranceByUserId(userId);
+      
+      if (!insurance) {
+        return res.status(404).json({ message: "No insurance policy found for this user" });
+      }
+      
+      res.json(insurance);
+    } catch (error) {
+      res.status(500).json({ message: "Server error", error: error.message });
+    }
+  });
+  
+  // Create user insurance (admin only)
+  app.post("/api/user-insurances", requireAdmin, async (req, res) => {
+    try {
+      const insuranceData = insertUserInsuranceSchema.parse(req.body);
+      
+      // Check if user exists
+      const user = await storage.getUser(insuranceData.userId);
+      if (!user) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+      
+      // Check if policy number is unique
+      const existingInsurance = await storage.getAllUserInsurances();
+      const policyExists = existingInsurance.some(ins => ins.policyNumber === insuranceData.policyNumber);
+      if (policyExists) {
+        return res.status(400).json({ message: "Policy number already exists" });
+      }
+      
+      // Check if user already has insurance
+      const userInsurance = await storage.getUserInsuranceByUserId(insuranceData.userId);
+      if (userInsurance) {
+        return res.status(400).json({ message: "User already has insurance. Update the existing policy instead." });
+      }
+      
+      const insurance = await storage.createUserInsurance(insuranceData);
+      res.status(201).json(insurance);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      res.status(500).json({ message: "Server error", error: error.message });
+    }
+  });
+  
+  // Update user insurance (admin only)
+  app.put("/api/user-insurances/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const insurance = await storage.getUserInsurance(id);
+      
+      if (!insurance) {
+        return res.status(404).json({ message: "User insurance policy not found" });
+      }
+      
+      // Validate the update data
+      const updateData = req.body;
+      
+      // If user ID is being updated, check if user exists
+      if (updateData.userId && updateData.userId !== insurance.userId) {
+        const user = await storage.getUser(updateData.userId);
+        if (!user) {
+          return res.status(400).json({ message: "Invalid user ID" });
+        }
+        
+        // Check if new user already has insurance
+        const userInsurance = await storage.getUserInsuranceByUserId(updateData.userId);
+        if (userInsurance && userInsurance.id !== id) {
+          return res.status(400).json({ message: "User already has insurance" });
+        }
+      }
+      
+      // If policy number is being updated, check if it's unique
+      if (updateData.policyNumber && updateData.policyNumber !== insurance.policyNumber) {
+        const existingInsurance = await storage.getAllUserInsurances();
+        const policyExists = existingInsurance.some(
+          ins => ins.policyNumber === updateData.policyNumber && ins.id !== id
+        );
+        if (policyExists) {
+          return res.status(400).json({ message: "Policy number already exists" });
+        }
+      }
+      
+      const updatedInsurance = await storage.updateUserInsurance(id, updateData);
+      res.json(updatedInsurance);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ message: validationError.message });
+      }
+      res.status(500).json({ message: "Server error", error: error.message });
+    }
+  });
+  
+  // Delete user insurance (admin only)
+  app.delete("/api/user-insurances/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const insurance = await storage.getUserInsurance(id);
+      
+      if (!insurance) {
+        return res.status(404).json({ message: "User insurance policy not found" });
+      }
+      
+      await storage.deleteUserInsurance(id);
+      res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Server error", error: error.message });
     }

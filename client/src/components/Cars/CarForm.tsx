@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -11,6 +11,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,7 +23,7 @@ import {
 } from "@/components/ui/select";
 import { Icons } from "@/components/ui/icons";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Upload, X } from "lucide-react";
 
 const carSchema = z.object({
   make: z.string().min(1, "Make is required"),
@@ -33,6 +34,7 @@ const carSchema = z.object({
     errorMap: () => ({ message: "Please select a valid status" }),
   }),
   carId: z.string().min(1, "Car ID is required").regex(/^[A-Za-z0-9-]+$/, "Car ID can only contain letters, numbers, and hyphens"),
+  imageUrl: z.string().optional(),
 });
 
 type CarFormValues = z.infer<typeof carSchema>;
@@ -44,6 +46,9 @@ interface CarFormProps {
 }
 
 export default function CarForm({ onSubmit, carId, isSubmitting }: CarFormProps) {
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  
   const form = useForm<CarFormValues>({
     resolver: zodResolver(carSchema),
     defaultValues: {
@@ -53,6 +58,7 @@ export default function CarForm({ onSubmit, carId, isSubmitting }: CarFormProps)
       locationId: undefined,
       status: "available",
       carId: "",
+      imageUrl: "",
     },
   });
   
@@ -85,12 +91,45 @@ export default function CarForm({ onSubmit, carId, isSubmitting }: CarFormProps)
         locationId: car.locationId,
         status: car.status as "available" | "rented" | "maintenance",
         carId: car.carId,
+        imageUrl: car.imageUrl || "",
       });
+      
+      // Set the image preview if there's an image URL
+      if (car.imageUrl) {
+        setImagePreview(car.imageUrl);
+      }
     }
   }, [car, form]);
   
   const isLoading = isLoadingLocations || (carId && isLoadingCar);
   const error = locationsError || carError;
+  
+  // Handle image upload
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    setIsUploading(true);
+    
+    // Read the file as a data URL
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64String = reader.result as string;
+      setImagePreview(base64String);
+      form.setValue("imageUrl", base64String);
+      setIsUploading(false);
+    };
+    reader.onerror = () => {
+      setIsUploading(false);
+    };
+    reader.readAsDataURL(file);
+  };
+  
+  // Clear the image
+  const clearImage = () => {
+    setImagePreview(null);
+    form.setValue("imageUrl", "");
+  };
   
   const handleSubmit = (data: CarFormValues) => {
     onSubmit(data);
@@ -235,6 +274,74 @@ export default function CarForm({ onSubmit, carId, isSubmitting }: CarFormProps)
               )}
             />
           </div>
+          
+          <FormField
+            control={form.control}
+            name="imageUrl"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Car Image</FormLabel>
+                <FormDescription>
+                  Upload an image of the car to help customers identify it.
+                </FormDescription>
+                
+                <div className="mt-2">
+                  {imagePreview ? (
+                    <div className="relative w-full max-w-[300px] h-[200px] border rounded-md overflow-hidden">
+                      <img 
+                        src={imagePreview} 
+                        alt="Car preview" 
+                        className="w-full h-full object-cover" 
+                      />
+                      <Button 
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="absolute top-2 right-2 h-8 w-8 p-0"
+                        onClick={clearImage}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="border border-dashed border-gray-300 dark:border-gray-700 rounded-md p-6 flex flex-col items-center justify-center">
+                      <div className="mb-2">
+                        <Upload className="h-6 w-6 text-gray-500 dark:text-gray-400" />
+                      </div>
+                      <div className="text-sm text-center text-gray-500 dark:text-gray-400 mb-4">
+                        <span className="font-medium">Click to upload</span> or drag and drop
+                      </div>
+                      <Input 
+                        type="file" 
+                        accept="image/*"
+                        className="hidden"
+                        id="car-image-upload"
+                        onChange={handleImageUpload}
+                        disabled={isUploading}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => document.getElementById('car-image-upload')?.click()}
+                        disabled={isUploading}
+                      >
+                        {isUploading ? (
+                          <>
+                            <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          "Select Image"
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           
           <div className="flex justify-end space-x-2 pt-4">
             <Button

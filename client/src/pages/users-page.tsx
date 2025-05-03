@@ -5,9 +5,10 @@ import { useAuth } from "@/hooks/use-auth";
 import UsersList from "@/components/Users/UsersList";
 import UserForm from "@/components/Users/UserForm";
 import LoginHistory from "@/components/Users/LoginHistory";
-import { Button } from "@/components/ui/button";
-import { Plus, Search } from "lucide-react";
+import { AddUserButton } from "@/components/Users/AddUserButton";
+import { Search, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import { 
   Dialog,
   DialogContent,
@@ -185,17 +186,6 @@ export default function UsersPage() {
             </p>
           </div>
           <div className="flex items-center space-x-3">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="min-w-[300px]">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="users">Users</TabsTrigger>
-                <TabsTrigger value="history">Login History</TabsTrigger>
-              </TabsList>
-            </Tabs>
-          </div>
-        </div>
-        
-        <TabsContent value="users" className="mt-0 space-y-6" active={activeTab === "users"}>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-500 dark:text-neutral-400" />
               <Input 
@@ -205,51 +195,57 @@ export default function UsersPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <Button onClick={handleAddNew}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add User
-            </Button>
+            <AddUserButton />
           </div>
-          
-          {usersError && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>
-                There was an error loading the users data. Please try refreshing.
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {isLoadingUsers ? (
-            <Skeleton className="h-[500px] w-full" />
-          ) : (
-            <UsersList 
-              users={filteredUsers || []} 
-              onEdit={handleEdit}
-              onDelete={handleDelete}
-              currentUserId={user?.id}
-            />
-          )}
-        </TabsContent>
+        </div>
         
-        <TabsContent value="history" className="mt-0 space-y-6" active={activeTab === "history"}>
-          {historyError && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Error</AlertTitle>
-              <AlertDescription>
-                There was an error loading the login history data. Please try refreshing.
-              </AlertDescription>
-            </Alert>
-          )}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="mb-4 w-full max-w-[400px]">
+            <TabsTrigger value="users" className="flex-1">Users</TabsTrigger>
+            <TabsTrigger value="history" className="flex-1">Login History</TabsTrigger>
+          </TabsList>
           
-          {isLoadingHistory ? (
-            <Skeleton className="h-[500px] w-full" />
-          ) : (
-            <LoginHistory loginHistory={loginHistory || []} />
-          )}
-        </TabsContent>
+          <TabsContent value="users" className="space-y-6">
+            {usersError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>
+                  There was an error loading the users data. Please try refreshing.
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {isLoadingUsers ? (
+              <Skeleton className="h-[500px] w-full" />
+            ) : (
+              <UsersList 
+                users={filteredUsers || []} 
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                currentUserId={user?.id}
+              />
+            )}
+          </TabsContent>
+          
+          <TabsContent value="history" className="space-y-6">
+            {historyError && (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>
+                  There was an error loading the login history data. Please try refreshing.
+                </AlertDescription>
+              </Alert>
+            )}
+            
+            {isLoadingHistory ? (
+              <Skeleton className="h-[500px] w-full" />
+            ) : (
+              <LoginHistory loginHistory={loginHistory || []} />
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
       
       <Dialog 

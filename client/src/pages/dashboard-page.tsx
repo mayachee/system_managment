@@ -7,6 +7,7 @@ import RentalActivityChart from "@/components/Dashboard/RentalActivityChart";
 import CarAvailabilityChart from "@/components/Dashboard/CarAvailabilityChart";
 import RecentActivity from "@/components/Dashboard/RecentActivity";
 import PopularCars from "@/components/Dashboard/PopularCars";
+import InsuranceOverview from "@/components/Dashboard/InsuranceOverview";
 import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 import { queryClient } from "@/lib/queryClient";
@@ -203,6 +204,12 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+        
+        {/* Insurance Overview Section */}
+        <InsuranceOverview 
+          isAdmin={user?.role === "admin"} 
+          loading={isLoading} 
+        />
         
         {/* Recent Activity & Popular Cars */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">

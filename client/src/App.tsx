@@ -11,6 +11,9 @@ import RentalsPage from "@/pages/rentals-page";
 import LocationsPage from "@/pages/locations-page";
 import UsersPage from "@/pages/users-page";
 import ProfilePage from "@/pages/profile-page";
+import SettingsPage from "@/pages/settings-page";
+import InsurancePage from "@/pages/insurance-page";
+import { ThemeSuggestion } from "@/components/ThemeSuggestion";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
 
@@ -21,9 +24,11 @@ function Router() {
       <ProtectedRoute path="/" component={DashboardPage} />
       <ProtectedRoute path="/cars" component={CarsPage} />
       <ProtectedRoute path="/rentals" component={RentalsPage} />
+      <ProtectedRoute path="/insurance" component={InsurancePage} />
       <ProtectedRoute path="/locations" component={LocationsPage} />
       <ProtectedRoute path="/users" component={UsersPage} />
       <ProtectedRoute path="/profile" component={ProfilePage} />
+      <ProtectedRoute path="/settings" component={SettingsPage} />
       <Route component={NotFound} />
     </Switch>
   );
@@ -35,6 +40,7 @@ function App() {
       <TooltipProvider>
         <AuthProvider>
           <Toaster />
+          <ThemeSuggestion />
           <Router />
         </AuthProvider>
       </TooltipProvider>

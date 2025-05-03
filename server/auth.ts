@@ -5,14 +5,11 @@ import session from "express-session";
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
 import { storage } from "./storage";
-import { User as SelectUser, InsertUser, insertUserSchema } from "@shared/schema";
-import { z } from "zod";
-import { ZodError } from "zod";
-import { fromZodError } from "zod-validation-error";
+import { User } from "@shared/schema";
 
 declare global {
   namespace Express {
-    interface User extends SelectUser {}
+    interface User extends User {}
   }
 }
 
@@ -32,16 +29,17 @@ async function comparePasswords(supplied: string, stored: string) {
 }
 
 export function setupAuth(app: Express) {
+  // For development, ensure session works properly
   const sessionSettings: session.SessionOptions = {
-    secret: process.env.SESSION_SECRET || "car-rental-app-secret",
+    secret: process.env.SESSION_SECRET || 'your-secret-key', // Use an env var in production
     resave: false,
     saveUninitialized: false,
-    store: storage.sessionStore,
     cookie: {
-      maxAge: 1000 * 60 * 60 * 24, // 24 hours
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-    }
+      secure: false, // Set to false for development even with HTTPS
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    },
+    store: storage.sessionStore,
   };
 
   app.set("trust proxy", 1);
@@ -54,18 +52,12 @@ export function setupAuth(app: Express) {
       try {
         const user = await storage.getUserByUsername(username);
         if (!user || !(await comparePasswords(password, user.password))) {
-          return done(null, false, { message: "Invalid username or password" });
+          return done(null, false);
         } else {
-          // Log this login in history
-          await storage.createLoginHistory({
-            userId: user.id,
-            timestamp: new Date()
-          });
-          
           return done(null, user);
         }
-      } catch (err) {
-        return done(err);
+      } catch (error) {
+        return done(error);
       }
     }),
   );
@@ -75,66 +67,62 @@ export function setupAuth(app: Express) {
     try {
       const user = await storage.getUser(id);
       done(null, user);
-    } catch (err) {
-      done(err);
+    } catch (error) {
+      done(error);
     }
   });
 
-  // Registration endpoint
   app.post("/api/register", async (req, res, next) => {
     try {
-      // Validate the request body
-      const userData = insertUserSchema.parse(req.body);
-      
-      const existingUser = await storage.getUserByUsername(userData.username);
+      const existingUser = await storage.getUserByUsername(req.body.username);
       if (existingUser) {
         return res.status(400).json({ message: "Username already exists" });
       }
 
       const user = await storage.createUser({
-        ...userData,
-        password: await hashPassword(userData.password),
+        ...req.body,
+        password: await hashPassword(req.body.password),
       });
-
-      // Remove password from the response
-      const { password, ...userWithoutPassword } = user;
 
       req.login(user, (err) => {
         if (err) return next(err);
-        res.status(201).json(userWithoutPassword);
+        res.status(201).json(user);
       });
     } catch (error) {
-      if (error instanceof ZodError) {
-        const validationError = fromZodError(error);
-        return res.status(400).json({ message: validationError.message });
-      }
       next(error);
     }
   });
 
-  // Login endpoint
   app.post("/api/login", (req, res, next) => {
+    console.log("Login attempt for:", req.body.username);
+    
     passport.authenticate("local", (err, user, info) => {
       if (err) {
+        console.error("Authentication error:", err);
         return next(err);
       }
+      
       if (!user) {
-        return res.status(401).json({ message: info.message || "Invalid credentials" });
+        console.log("Invalid credentials for user:", req.body.username);
+        return res.status(401).json({ message: "Invalid credentials" });
       }
       
+      console.log("User authenticated:", user.username);
       req.login(user, (err) => {
         if (err) {
+          console.error("Session creation error:", err);
           return next(err);
         }
         
-        // Remove password from the response
-        const { password, ...userWithoutPassword } = user;
-        return res.status(200).json(userWithoutPassword);
+        // Log login history
+        storage.createLoginHistory({ userId: user.id });
+        console.log("Login successful for:", user.username);
+        
+        return res.status(200).json(user);
       });
     })(req, res, next);
   });
 
-  // Logout endpoint
   app.post("/api/logout", (req, res, next) => {
     req.logout((err) => {
       if (err) return next(err);
@@ -142,27 +130,16 @@ export function setupAuth(app: Express) {
     });
   });
 
-  // Get current user endpoint
   app.get("/api/user", (req, res) => {
+    console.log("GET /api/user - Session ID:", req.sessionID);
+    console.log("GET /api/user - Is authenticated:", req.isAuthenticated());
+    
     if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Not authenticated" });
+      console.log("User not authenticated, returning 401");
+      return res.sendStatus(401);
     }
     
-    // Remove password from the response
-    const { password, ...userWithoutPassword } = req.user;
-    res.json(userWithoutPassword);
-  });
-  
-  // Middleware to check if user is an admin
-  app.use("/api/admin/*", (req, res, next) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Not authenticated" });
-    }
-    
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ message: "Not authorized" });
-    }
-    
-    next();
+    console.log("User authenticated:", req.user);
+    res.json(req.user);
   });
 }

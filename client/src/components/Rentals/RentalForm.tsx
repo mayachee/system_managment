@@ -112,7 +112,10 @@ export default function RentalForm({ onSubmit, rentalId, isSubmitting, isAdmin }
     refetch: checkAvailability,
     error: availabilityError
   } = useQuery({
-    queryKey: [`/api/cars/${selectedCarId}/availability`, { startDate, endDate }],
+    queryKey: [`/api/cars/${selectedCarId}/availability`, { 
+      startDate: startDate ? startDate.toISOString().split('T')[0] : undefined, 
+      endDate: endDate ? endDate.toISOString().split('T')[0] : undefined 
+    }],
     enabled: !!selectedCarId && !!startDate && !!endDate && startDate < endDate,
   });
   
@@ -133,7 +136,13 @@ export default function RentalForm({ onSubmit, rentalId, isSubmitting, isAdmin }
   const error = carsError || usersError || rentalError || availabilityError;
   
   const handleSubmit = (data: RentalFormValues) => {
-    onSubmit(data);
+    // Format the dates to ensure they're in the correct format 
+    const formattedData = {
+      ...data,
+      startDate: data.startDate.toISOString(),
+      endDate: data.endDate.toISOString()
+    };
+    onSubmit(formattedData as any);
   };
   
   return (
