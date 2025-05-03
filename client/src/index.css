@@ -2,6 +2,38 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Base transition settings for all themes */
+*, *::before, *::after {
+  /* By default, apply quicker transitions for button hover states, etc. */
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
+
+/* Smoother transitions when explicitly changing themes */
+.theme-transition-active *,
+.theme-transition-active *::before,
+.theme-transition-active *::after {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, box-shadow !important;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transition-duration: 300ms !important;
+}
+
+/* Exclude transitions for specific elements that might cause visual issues */
+.no-transition, 
+.no-transition *,
+button:active,
+button:active *,
+.duration-0,
+.duration-0 * {
+  transition: none !important;
+}
+
+/* Disable transitions during page load */
+.preload * {
+  transition: none !important;
+}
+
 :root {
   /* Light mode - Crisp, clean theme with blue accents */
   --background: 0 0% 100%;
@@ -38,40 +70,39 @@
   --header-foreground: 210 40% 98%;
 }
 
-/* Dark mode disabled - we're using light mode only */
+/* Dark mode styles */
 .dark {
-  /* Copy of light mode values to ensure light mode appearance even with .dark class */
-  --background: 0 0% 100%;
-  --foreground: 222 47% 11%;
-  --muted: 210 40% 96.1%;
-  --muted-foreground: 215 16% 47%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
-  --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
-  --border: 214 32% 91%;
-  --input: 214 32% 91%;
+  --background: 222 47% 11%;
+  --foreground: 210 40% 98%;
+  --muted: 217 33% 17%;
+  --muted-foreground: 215 20% 65%;
+  --popover: 222 47% 11%;
+  --popover-foreground: 210 40% 98%;
+  --card: 222 47% 11%;
+  --card-foreground: 210 40% 98%;
+  --border: 217 33% 17%;
+  --input: 217 33% 17%;
   --primary: 221 83% 53%;
   --primary-foreground: 210 40% 98%;
-  --secondary: 210 40% 96.1%;
-  --secondary-foreground: 222 47% 11%;
-  --accent: 210 40% 96.1%;
-  --accent-foreground: 222 47% 11%;
+  --secondary: 217 33% 17%;
+  --secondary-foreground: 210 40% 98%;
+  --accent: 217 33% 17%;
+  --accent-foreground: 210 40% 98%;
   --destructive: 0 84.2% 60.2%;
   --destructive-foreground: 210 40% 98%;
   --ring: 221 83% 53%;
   --radius: 0.5rem;
   
-  /* Custom light mode additions */
+  /* Custom dark mode additions */
   --success: 142 69% 58%;
   --success-foreground: 210 40% 98%;
   --warning: 38 92% 50%;
   --warning-foreground: 210 40% 98%;
   --info: 221 83% 53%;
   --info-foreground: 210 40% 98%;
-  --sidebar: 0 0% 100%;
-  --sidebar-foreground: 222 47% 11%;
-  --header: 221 83% 53%;
+  --sidebar: 222 47% 9%;
+  --sidebar-foreground: 210 40% 98%;
+  --header: 221 83% 25%;
   --header-foreground: 210 40% 98%;
 }
 

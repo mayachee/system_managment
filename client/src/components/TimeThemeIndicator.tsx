@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTheme } from "@/hooks/use-theme";
+import { useLocalization } from "@/hooks/use-localization";
 import { Moon, Sun, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +11,7 @@ import {
 
 export function TimeThemeIndicator() {
   const { getTimeBasedTheme, theme, autoThemeSwitching } = useTheme();
+  const { t } = useLocalization();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [timeBasedSuggestion, setTimeBasedSuggestion] = useState<{theme: string, reason: string}>(getTimeBasedTheme());
   
@@ -74,7 +76,7 @@ export function TimeThemeIndicator() {
             )}
             {autoThemeSwitching && (
               <span className="ml-1 bg-green-500/20 dark:bg-green-300/20 text-green-600 dark:text-green-300 text-[10px] px-1 py-0.5 rounded">
-                AUTO
+                {t('app.auto')}
               </span>
             )}
           </Button>
@@ -82,33 +84,33 @@ export function TimeThemeIndicator() {
         <TooltipContent side="bottom" className="max-w-xs">
           <div className="space-y-2">
             <p>
-              <span className="font-medium">Current time: </span> 
+              <span className="font-medium">{t('app.currentTime')}: </span> 
               {formattedTime} 
-              <span className="ml-1 text-muted-foreground">suggests {suggestedTheme} mode</span>
+              <span className="ml-1 text-muted-foreground">{t('app.suggests')} {t(suggestedTheme === 'dark' ? 'app.themeDark' : 'app.themeLight')} {t('app.mode')}</span>
             </p>
             
             {!matchesTimeTheme && !autoThemeSwitching && (
               <p className="text-amber-600 dark:text-amber-400 font-medium text-sm">
-                Your theme doesn't match the time suggestion.
+                {t('app.themeMismatch')}
                 <br />
-                <span className="text-xs">Enable auto switching in Settings</span>
+                <span className="text-xs">{t('app.enableAutoSwitch')}</span>
               </p>
             )}
             
             {autoThemeSwitching && (
               <p className="text-green-600 dark:text-green-400 text-sm font-medium">
-                Auto switching is enabled. Theme will adjust automatically.
+                {t('app.autoSwitchEnabled')}
               </p>
             )}
             
             <div className="text-xs text-muted-foreground mt-1 pt-1 border-t border-border">
-              <p className="font-medium mb-1">Time-based theme schedule:</p>
+              <p className="font-medium mb-1">{t('app.timeSchedule')}:</p>
               <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
-                <span>5AM-8AM:</span><span>Light (wake up)</span>
-                <span>8AM-5PM:</span><span>Light (productivity)</span>
-                <span>5PM-7PM:</span><span>Light (transition)</span>
-                <span>7PM-10PM:</span><span>Dark (wind down)</span>
-                <span>10PM-5AM:</span><span>Dark (sleep quality)</span>
+                <span>5AM-8AM:</span><span>{t('app.themeLight')} ({t('app.wakeUp')})</span>
+                <span>8AM-5PM:</span><span>{t('app.themeLight')} ({t('app.productivity')})</span>
+                <span>5PM-7PM:</span><span>{t('app.themeLight')} ({t('app.transition')})</span>
+                <span>7PM-10PM:</span><span>{t('app.themeDark')} ({t('app.windDown')})</span>
+                <span>10PM-5AM:</span><span>{t('app.themeDark')} ({t('app.sleepQuality')})</span>
               </div>
             </div>
           </div>

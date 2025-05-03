@@ -40,12 +40,7 @@ export default function AuthPage() {
   const { theme, setTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<string>("login");
   
-  // If already logged in, redirect to dashboard
-  if (user) {
-    navigate("/");
-    return null;
-  }
-  
+  // Define forms regardless of login state to prevent hooks error
   const loginForm = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
@@ -81,6 +76,12 @@ export default function AuthPage() {
   const toggleTheme = () => {
     setTheme(theme === "dark" ? "light" : "dark");
   };
+
+  // If already logged in, redirect to dashboard
+  if (user) {
+    navigate("/");
+    return null;
+  }
 
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-neutral-50 dark:bg-neutral-900">

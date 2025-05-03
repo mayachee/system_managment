@@ -10,8 +10,14 @@ This document explains how to use Docker for deploying the Car Rental System app
 ```
 
 ### On Windows:
+In Command Prompt (cmd.exe):
 ```
 run.bat
+```
+
+In PowerShell:
+```
+.\run.bat
 ```
 
 These scripts will check prerequisites, build and start the application for you automatically.

@@ -40,6 +40,29 @@ interface AddInsuranceDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// Define types for insurance form data
+interface BaseInsuranceFormData {
+  policyNumber: string;
+  provider: string;
+  coverageType: string;
+  premium: number;
+  startDate: string;
+  endDate: string;
+}
+
+interface CarInsuranceFormData extends BaseInsuranceFormData {
+  carId: number;
+  deductible: number;
+  coverageLimit: number;
+  isActive?: boolean;
+}
+
+interface UserInsuranceFormData extends BaseInsuranceFormData {
+  userId: number;
+  liabilityCoverage: number;
+  personalInjuryCoverage: number;
+}
+
 // Insurance form schemas
 const carInsuranceSchema = z.object({
   carId: z.number({
@@ -136,23 +159,109 @@ export default function AddInsuranceDialog({ type, open, onOpenChange }: AddInsu
         }
   });
 
+  // Define types for cars and users
+  interface Car {
+    id: number;
+    make: string;
+    model: string;
+    carId: string;
+    status: string;
+    year: number;
+  }
+
+  interface User {
+    id: number;
+    username: string;
+    email: string;
+    role: string;
+  }
+
   // Fetch cars or users based on the insurance type
-  const { data: cars = [] } = useQuery({
+  const { data: cars = [] as Car[] } = useQuery<Car[]>({
     queryKey: ["/api/cars"],
     enabled: type === "car" && open,
   });
 
-  const { data: users = [] } = useQuery({
+  const { data: users = [] as User[] } = useQuery<User[]>({
     queryKey: ["/api/users"],
     enabled: type === "user" && open,
   });
 
   // Create insurance mutation
   const createInsuranceMutation = useMutation({
-    mutationFn: async (data: z.infer<typeof schema>) => {
-      const endpoint = type === "car" ? "/api/car-insurances" : "/api/user-insurances";
-      const response = await apiRequest("POST", endpoint, data);
-      return response.json();
+    mutationFn: async (formData: z.infer<typeof schema>) => {
+      // We need to create a copy to avoid mutation
+      const clonedData = JSON.parse(JSON.stringify(formData));
+      
+      // Instead of mutating the data structure, we'll modify our approach
+      // to use the Zod schema for proper validation and transformation
+      
+      try {
+        let dataToSend: any = {};
+        
+        if (type === "car") {
+          const carData = clonedData as unknown as CarInsuranceFormData;
+          
+          // Send the data in the format that the server expects
+          dataToSend = {
+            carId: parseInt(carData.carId.toString()),
+            policyNumber: carData.policyNumber,
+            provider: carData.provider,
+            coverageType: carData.coverageType,
+            premium: carData.premium.toString(),
+            deductible: carData.deductible.toString(),
+            coverageLimit: carData.coverageLimit.toString(),
+            // For Date objects, we need to pass them in ISO string format
+            // which Drizzle ORM will parse correctly as timestamp types
+            startDate: new Date(carData.startDate).toISOString(),
+            endDate: new Date(carData.endDate).toISOString()
+          };
+        } else {
+          const userData = clonedData as unknown as UserInsuranceFormData;
+          
+          dataToSend = {
+            userId: parseInt(userData.userId.toString()),
+            policyNumber: userData.policyNumber,
+            provider: userData.provider,
+            coverageType: userData.coverageType,
+            premium: userData.premium.toString(),
+            liabilityCoverage: userData.liabilityCoverage?.toString() || "0",
+            personalInjuryCoverage: userData.personalInjuryCoverage?.toString() || "0",
+            // For Date objects, we need to pass them in ISO string format
+            startDate: new Date(userData.startDate).toISOString(),
+            endDate: new Date(userData.endDate).toISOString()
+          };
+        }
+        
+        console.log("Sending insurance data:", dataToSend);
+        
+        const endpoint = type === "car" ? "/api/car-insurances" : "/api/user-insurances";
+        const response = await apiRequest("POST", endpoint, dataToSend);
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Failed to create insurance policy");
+        }
+        
+        return response.json();
+      } catch (error) {
+        console.error("Error in insurance mutation:", error);
+        // Log more detailed error information
+        if (error instanceof Error) {
+          console.error("Error message:", error.message);
+          
+          try {
+            // Try to parse the error message if it contains JSON
+            if (error.message.includes('{')) {
+              const errorJson = error.message.substring(error.message.indexOf('{'));
+              console.error("Parsed error:", JSON.parse(errorJson));
+            }
+          } catch (parseError) {
+            console.error("Could not parse error JSON:", parseError);
+          }
+        }
+        throw error;
+      }
     },
     onSuccess: () => {
       // Invalidate queries to refetch data
@@ -168,10 +277,11 @@ export default function AddInsuranceDialog({ type, open, onOpenChange }: AddInsu
       onOpenChange(false);
       form.reset();
     },
-    onError: (error) => {
+    onError: (error: Error) => {
+      console.error("Insurance creation error:", error);
       toast({
         title: "Error",
-        description: `Failed to create insurance policy: ${error.message}`,
+        description: error.message || "Failed to create insurance policy. Please check your form inputs.",
         variant: "destructive",
       });
     },
@@ -232,13 +342,13 @@ export default function AddInsuranceDialog({ type, open, onOpenChange }: AddInsu
                       </FormControl>
                       <SelectContent>
                         {type === "car" ? (
-                          cars.map((car: any) => (
+                          cars.map((car: Car) => (
                             <SelectItem key={car.id} value={car.id.toString()}>
                               {car.make} {car.model} ({car.carId})
                             </SelectItem>
                           ))
                         ) : (
-                          users.map((user: any) => (
+                          users.map((user: User) => (
                             <SelectItem key={user.id} value={user.id.toString()}>
                               {user.username} - {user.email}
                             </SelectItem>

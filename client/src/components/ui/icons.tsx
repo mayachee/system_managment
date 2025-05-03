@@ -23,6 +23,11 @@ import {
   Menu,
   Eye,
   Shield,
+  Wrench,
+  Award,
+  Download,
+  Trash2,
+  Bot,
 } from "lucide-react";
 import { SiGoogle } from 'react-icons/si';
 
@@ -42,6 +47,8 @@ export const Icons = {
   plus: Plus,
   edit: Pencil,
   delete: Trash,
+  trash: Trash2,
+  download: Download,
   chevronDown: ChevronDown,
   chevronUp: ChevronUp,
   chevronLeft: ChevronLeft,
@@ -51,5 +58,8 @@ export const Icons = {
   insurance: Shield,
   menu: Menu,
   view: Eye,
+  tool: Wrench,
+  award: Award,
   google: SiGoogle,
+  bot: Bot,
 };

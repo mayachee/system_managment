@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import express, { type Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
@@ -8,6 +8,20 @@ import { fromZodError } from "zod-validation-error";
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { scrypt, randomBytes, timingSafeEqual } from "crypto";
 import { promisify } from "util";
+
+// API Route imports - module format
+import * as carMaintenanceAPI from "./api/car-maintenance";
+import * as reviewsRoutes from "./api/reviews";
+import * as damageReportsRoutes from "./api/damage-reports";
+import * as loyaltyProgramRoutes from "./api/loyalty-program";
+import * as loyaltyProgramManagementAPI from "./api/loyalty-program-management";
+import * as carAvailabilityRoutes from "./api/car-availability";
+import * as locationFeaturesRoutes from "./api/location-features";
+import * as carFeaturesRoutes from "./api/car-features";
+import * as healthAPI from "./api/health";
+import * as vehicleHealthAPI from "./api/vehicle-health";
+import * as carPhotosAPI from "./api/car-photos";
+
 import { 
   insertCarSchema, 
   insertLocationSchema,
@@ -15,7 +29,10 @@ import {
   insertUserSchema,
   insertLoginHistorySchema,
   insertCarInsuranceSchema,
-  insertUserInsuranceSchema
+  insertUserInsuranceSchema,
+  insertCarMaintenanceSchema,
+  insertVehicleHealthComponentSchema,
+  insertVehicleHealthDashboardSchema
 } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -81,6 +98,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
     res.status(403).json({ message: "Forbidden" });
   };
+
+  // Car Maintenance API
+  // Get all maintenance records
+  app.get("/api/car-maintenance", requireAuth, async (req, res) => {
+    try {
+      const records = await carMaintenanceAPI.getMaintenanceRecords();
+      res.json(records);
+    } catch (error) {
+      console.error("Error fetching maintenance records:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get a single maintenance record by ID
+  app.get("/api/car-maintenance/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
+      
+      const record = await carMaintenanceAPI.getMaintenanceRecordById(id);
+      if (!record) {
+        return res.status(404).json({ error: "Maintenance record not found" });
+      }
+      
+      res.json(record);
+    } catch (error) {
+      console.error(`Error fetching maintenance record:`, error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get maintenance records for a specific car
+  app.get("/api/car-maintenance/car/:carId", requireAuth, async (req, res) => {
+    try {
+      const carId = parseInt(req.params.carId);
+      if (isNaN(carId)) {
+        return res.status(400).json({ error: "Invalid car ID format" });
+      }
+      
+      const records = await carMaintenanceAPI.getMaintenanceRecordsByCar(carId);
+      res.json(records);
+    } catch (error) {
+      console.error(`Error fetching maintenance records for car:`, error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get upcoming maintenance within a certain number of days
+  app.get("/api/car-maintenance/upcoming/:days", requireAuth, async (req, res) => {
+    try {
+      const days = parseInt(req.params.days) || 30;
+      const records = await carMaintenanceAPI.getUpcomingMaintenance(days);
+      res.json(records);
+    } catch (error) {
+      console.error(`Error fetching upcoming maintenance:`, error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Create a new maintenance record
+  app.post("/api/car-maintenance", requireAuth, async (req, res) => {
+    try {
+      const maintenanceData = insertCarMaintenanceSchema.parse(req.body);
+      const record = await carMaintenanceAPI.createMaintenanceRecord(maintenanceData);
+      res.status(201).json(record);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ error: validationError.message });
+      }
+      console.error("Error creating maintenance record:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Update an existing maintenance record
+  app.patch("/api/car-maintenance/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
+      
+      // Find the record first to make sure it exists
+      const existingRecord = await carMaintenanceAPI.getMaintenanceRecordById(id);
+      if (!existingRecord) {
+        return res.status(404).json({ error: "Maintenance record not found" });
+      }
+      
+      const updateData = req.body;
+      const updatedRecord = await carMaintenanceAPI.updateMaintenanceRecord(id, updateData);
+      res.json(updatedRecord);
+    } catch (error) {
+      console.error(`Error updating maintenance record:`, error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Delete a maintenance record
+  app.delete("/api/car-maintenance/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
+      
+      // Find the record first to make sure it exists
+      const existingRecord = await carMaintenanceAPI.getMaintenanceRecordById(id);
+      if (!existingRecord) {
+        return res.status(404).json({ error: "Maintenance record not found" });
+      }
+      
+      await carMaintenanceAPI.deleteMaintenanceRecord(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error(`Error deleting maintenance record:`, error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
 
   // Dashboard stats
   app.get("/api/dashboard/stats", requireAuth, async (req, res) => {
@@ -1249,6 +1387,508 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(204).send();
     } catch (error) {
       res.status(500).json({ message: "Server error", error: error.message });
+    }
+  });
+
+  // The car maintenance routes are already defined above in this file
+  // Remove other routes until we have proper modules created
+  // Remove next steps: Create proper Express router modules for each API
+
+  // Health Check API Routes
+  // Basic health check - publicly accessible
+  app.get("/api/health", async (req, res) => {
+    try {
+      await healthAPI.getHealth(req, res);
+    } catch (error) {
+      console.error("Health check error:", error);
+      res.status(500).json({ status: "error", message: "Health check failed" });
+    }
+  });
+
+  // Detailed health check - admin only
+  app.get("/api/health/detailed", requireAdmin, async (req, res) => {
+    try {
+      await healthAPI.getDetailedHealth(req, res);
+    } catch (error) {
+      console.error("Detailed health check error:", error);
+      res.status(500).json({ status: "error", message: "Detailed health check failed" });
+    }
+  });
+
+  // Database health check - admin only
+  app.get("/api/health/database", requireAdmin, async (req, res) => {
+    try {
+      await healthAPI.getDatabaseHealth(req, res);
+    } catch (error) {
+      console.error("Database health check error:", error);
+      res.status(500).json({ status: "error", message: "Database health check failed" });
+    }
+  });
+
+  // Loyalty Program Management API
+  // Get all loyalty programs
+  app.get("/api/loyalty-program-management/programs", requireAuth, async (req, res) => {
+    try {
+      await loyaltyProgramManagementAPI.getAllPrograms(req, res);
+    } catch (error) {
+      console.error("Error fetching loyalty programs:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Get a single loyalty program by ID
+  app.get("/api/loyalty-program-management/programs/:id", requireAuth, async (req, res) => {
+    try {
+      await loyaltyProgramManagementAPI.getProgramById(req, res);
+    } catch (error) {
+      console.error(`Error fetching loyalty program:`, error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Create a new loyalty program (admin only)
+  app.post("/api/loyalty-program-management/programs", requireAdmin, async (req, res) => {
+    try {
+      // Pass the req and res objects directly to the controller function
+      await loyaltyProgramManagementAPI.createProgram(req, res);
+      // The controller will handle the response, so we don't need to do anything else here
+    } catch (error) {
+      console.error("Error creating loyalty program:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Update an existing loyalty program (admin only)
+  app.patch("/api/loyalty-program-management/programs/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
+      
+      const program = await loyaltyProgramManagementAPI.updateProgram(id, req.body);
+      if (!program) {
+        return res.status(404).json({ error: "Loyalty program not found" });
+      }
+      
+      res.json(program);
+    } catch (error) {
+      console.error(`Error updating loyalty program:`, error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Delete a loyalty program (admin only)
+  app.delete("/api/loyalty-program-management/programs/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
+      
+      await loyaltyProgramManagementAPI.deleteProgram(id);
+      res.status(204).send();
+    } catch (error) {
+      if (error.message === "Cannot delete program with active members") {
+        return res.status(400).json({ error: error.message });
+      }
+      console.error(`Error deleting loyalty program:`, error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Get loyalty points for a user
+  app.get("/api/loyalty-program-management/users/:userId/points", requireAuth, async (req, res) => {
+    try {
+      await loyaltyProgramManagementAPI.getUserLoyaltyPoints(req, res);
+    } catch (error) {
+      console.error(`Error fetching loyalty points:`, error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Enroll a user in a loyalty program
+  app.post("/api/loyalty-program-management/users/:userId/enroll", requireAuth, async (req, res) => {
+    try {
+      await loyaltyProgramManagementAPI.enrollUserInProgram(req, res);
+    } catch (error) {
+      console.error(`Error enrolling user:`, error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Get transactions for a user
+  app.get("/api/loyalty-program-management/users/:userId/transactions", requireAuth, async (req, res) => {
+    try {
+      await loyaltyProgramManagementAPI.getUserTransactions(req, res);
+    } catch (error) {
+      console.error(`Error fetching transactions:`, error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Create a new transaction (admin only)
+  app.post("/api/loyalty-program-management/transactions", requireAdmin, async (req, res) => {
+    try {
+      const transaction = await loyaltyProgramManagementAPI.createTransaction(req.body);
+      res.status(201).json(transaction);
+    } catch (error) {
+      if (error.message === "Loyalty points record not found" || 
+          error.message === "Insufficient points for redemption") {
+        return res.status(400).json({ error: error.message });
+      }
+      console.error(`Error creating transaction:`, error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Award points for a completed rental (admin only)
+  app.post("/api/loyalty-program-management/award-rental-points/:rentalId", requireAdmin, async (req, res) => {
+    try {
+      const rentalId = parseInt(req.params.rentalId);
+      if (isNaN(rentalId)) {
+        return res.status(400).json({ error: "Invalid rental ID format" });
+      }
+      
+      const transaction = await loyaltyProgramManagementAPI.awardRentalPoints(rentalId);
+      res.status(201).json(transaction);
+    } catch (error) {
+      if (error.message === "Completed rental not found" || 
+          error.message === "Points already awarded for this rental" ||
+          error.message === "No active loyalty program found") {
+        return res.status(400).json({ error: error.message });
+      }
+      console.error(`Error awarding points:`, error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Get loyalty program statistics (admin only)
+  app.get("/api/loyalty-program-management/statistics/:programId", requireAdmin, async (req, res) => {
+    try {
+      const programId = parseInt(req.params.programId);
+      if (isNaN(programId)) {
+        return res.status(400).json({ error: "Invalid program ID format" });
+      }
+      
+      const statistics = await loyaltyProgramManagementAPI.getProgramStatistics(programId);
+      res.json(statistics);
+    } catch (error) {
+      if (error.message === "Loyalty program not found") {
+        return res.status(404).json({ error: error.message });
+      }
+      console.error(`Error fetching statistics:`, error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Update a user's loyalty tier (admin only)
+  app.patch("/api/loyalty-program-management/users/:loyaltyPointsId/tier", requireAdmin, async (req, res) => {
+    try {
+      const loyaltyPointsId = parseInt(req.params.loyaltyPointsId);
+      if (isNaN(loyaltyPointsId)) {
+        return res.status(400).json({ error: "Invalid loyalty points ID format" });
+      }
+      
+      const { tier } = req.body;
+      if (!tier) {
+        return res.status(400).json({ error: "Tier is required" });
+      }
+      
+      const updatedPoints = await loyaltyProgramManagementAPI.updateUserTier(loyaltyPointsId, tier);
+      if (!updatedPoints) {
+        return res.status(404).json({ error: "Loyalty points record not found" });
+      }
+      
+      res.json(updatedPoints);
+    } catch (error) {
+      console.error(`Error updating tier:`, error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Check if a user can redeem points
+  app.get("/api/loyalty-program-management/users/:userId/can-redeem/:points", requireAuth, async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID format" });
+      }
+      
+      // Check if the user is checking their own redemption eligibility or if they're an admin
+      if (req.user.id !== userId && req.user.role !== "admin") {
+        return res.status(403).json({ error: "Forbidden - Can only check your own redemption eligibility" });
+      }
+      
+      const programId = parseInt(req.query.programId as string);
+      if (isNaN(programId)) {
+        return res.status(400).json({ error: "Program ID is required" });
+      }
+      
+      const pointsToRedeem = parseInt(req.params.points);
+      if (isNaN(pointsToRedeem) || pointsToRedeem <= 0) {
+        return res.status(400).json({ error: "Invalid points value" });
+      }
+      
+      const result = await loyaltyProgramManagementAPI.canUserRedeemPoints(userId, programId, pointsToRedeem);
+      res.json(result);
+    } catch (error) {
+      console.error(`Error checking redemption eligibility:`, error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Get all users in a loyalty program (admin only)
+  app.get("/api/loyalty-program-management/programs/:programId/users", requireAdmin, async (req, res) => {
+    try {
+      const programId = parseInt(req.params.programId);
+      if (isNaN(programId)) {
+        return res.status(400).json({ error: "Invalid program ID format" });
+      }
+      
+      const users = await loyaltyProgramManagementAPI.getProgramUsers(programId);
+      res.json(users);
+    } catch (error) {
+      console.error(`Error fetching program users:`, error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Expire points that are past their expiry date (admin only)
+  app.post("/api/loyalty-program-management/expire-points", requireAdmin, async (req, res) => {
+    try {
+      const result = await loyaltyProgramManagementAPI.expirePoints();
+      res.json(result);
+    } catch (error) {
+      console.error(`Error expiring points:`, error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Vehicle Health API endpoints
+  
+  // Get all vehicle health dashboards
+  app.get("/api/vehicle-health/dashboards", requireAuth, async (req, res) => {
+    try {
+      const dashboards = await vehicleHealthAPI.getAllVehicleHealthDashboards();
+      res.json(dashboards);
+    } catch (error) {
+      console.error("Error fetching vehicle health dashboards:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Get critical vehicles
+  app.get("/api/vehicle-health/critical", requireAuth, async (req, res) => {
+    try {
+      const vehicles = await vehicleHealthAPI.getCriticalVehicles();
+      res.json(vehicles);
+    } catch (error) {
+      console.error("Error fetching critical vehicles:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Get vehicles needing attention
+  app.get("/api/vehicle-health/needs-attention", requireAuth, async (req, res) => {
+    try {
+      const vehicles = await vehicleHealthAPI.getVehiclesNeedingAttention();
+      res.json(vehicles);
+    } catch (error) {
+      console.error("Error fetching vehicles needing attention:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Get health dashboard for a specific car
+  app.get("/api/vehicle-health/dashboard/:carId", requireAuth, async (req, res) => {
+    try {
+      const carId = parseInt(req.params.carId);
+      if (isNaN(carId)) {
+        return res.status(400).json({ error: "Invalid car ID format" });
+      }
+      
+      const dashboard = await vehicleHealthAPI.getCarHealthDashboard(carId);
+      if (!dashboard) {
+        return res.status(404).json({ error: "Vehicle health dashboard not found" });
+      }
+      
+      res.json(dashboard);
+    } catch (error) {
+      console.error("Error fetching vehicle health dashboard:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Get health components for a specific car
+  app.get("/api/vehicle-health/components/:carId", requireAuth, async (req, res) => {
+    try {
+      const carId = parseInt(req.params.carId);
+      if (isNaN(carId)) {
+        return res.status(400).json({ error: "Invalid car ID format" });
+      }
+      
+      const components = await vehicleHealthAPI.getCarHealthComponents(carId);
+      res.json(components);
+    } catch (error) {
+      console.error("Error fetching car health components:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Create a new health component
+  app.post("/api/vehicle-health/components", requireAuth, async (req, res) => {
+    try {
+      if (!req.user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      // Add updatedBy user ID to the component data
+      const componentData = {
+        ...req.body,
+        updatedBy: req.user.id
+      };
+      
+      const validatedData = insertVehicleHealthComponentSchema.parse(componentData);
+      const component = await vehicleHealthAPI.createHealthComponent(validatedData);
+      res.status(201).json(component);
+    } catch (error) {
+      if (error instanceof ZodError) {
+        const validationError = fromZodError(error);
+        return res.status(400).json({ error: validationError.message });
+      }
+      console.error("Error creating health component:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Update an existing health component
+  app.patch("/api/vehicle-health/components/:id", requireAuth, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
+      
+      if (!req.user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+      
+      // Add updatedBy user ID to the update data
+      const updateData = {
+        ...req.body,
+        updatedBy: req.user.id
+      };
+      
+      const component = await vehicleHealthAPI.getHealthComponentById(id);
+      if (!component) {
+        return res.status(404).json({ error: "Health component not found" });
+      }
+      
+      const updatedComponent = await vehicleHealthAPI.updateHealthComponent(id, updateData);
+      res.json(updatedComponent);
+    } catch (error) {
+      console.error("Error updating health component:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Delete a health component
+  app.delete("/api/vehicle-health/components/:id", requireAuth, requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      if (isNaN(id)) {
+        return res.status(400).json({ error: "Invalid ID format" });
+      }
+      
+      const component = await vehicleHealthAPI.getHealthComponentById(id);
+      if (!component) {
+        return res.status(404).json({ error: "Health component not found" });
+      }
+      
+      await vehicleHealthAPI.deleteHealthComponent(id);
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting health component:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Update vehicle health dashboard
+  app.post("/api/vehicle-health/dashboard/update/:carId", requireAuth, async (req, res) => {
+    try {
+      const carId = parseInt(req.params.carId);
+      if (isNaN(carId)) {
+        return res.status(400).json({ error: "Invalid car ID format" });
+      }
+      
+      const dashboard = await vehicleHealthAPI.updateVehicleHealthDashboard(carId);
+      if (!dashboard) {
+        return res.status(404).json({ error: "Vehicle health dashboard not found" });
+      }
+      
+      res.json(dashboard);
+    } catch (error) {
+      console.error("Error updating vehicle health dashboard:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Car Photos API Endpoints
+  // Upload photos for a car
+  app.post(
+    "/api/cars/:id/photos", 
+    requireAuth, 
+    carPhotosAPI.upload.array('photos', 10), // Allow up to 10 photos
+    carPhotosAPI.uploadCarPhotos
+  );
+
+  // Delete a photo from a car
+  app.delete(
+    "/api/cars/:id/photos",
+    requireAuth,
+    carPhotosAPI.deleteCarPhoto
+  );
+
+  // Serve static files from the public directory
+  app.use('/public', express.static('public'));
+
+  // Car Features API Routes
+  // Get car features by car ID
+  app.get("/api/cars/:carId/features", requireAuth, async (req, res) => {
+    try {
+      const carId = parseInt(req.params.carId);
+      if (isNaN(carId)) {
+        return res.status(400).json({ error: "Invalid car ID format" });
+      }
+      
+      const features = await carFeaturesRoutes.getOrCreateCarFeatures(carId);
+      res.json(features);
+    } catch (error) {
+      console.error("Error fetching car features:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+  
+  // Update car features
+  app.patch("/api/cars/:carId/features", requireAuth, async (req, res) => {
+    try {
+      const carId = parseInt(req.params.carId);
+      if (isNaN(carId)) {
+        return res.status(400).json({ error: "Invalid car ID format" });
+      }
+      
+      const updateData = req.body;
+      const features = await carFeaturesRoutes.updateCarFeatures(carId, updateData);
+      
+      if (!features) {
+        return res.status(404).json({ error: "Car features not found" });
+      }
+      
+      res.json(features);
+    } catch (error) {
+      console.error("Error updating car features:", error);
+      res.status(500).json({ error: "Internal server error" });
     }
   });
 

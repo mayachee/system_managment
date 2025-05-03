@@ -128,10 +128,8 @@ export default function RecentActivity({ activities }: RecentActivityProps) {
     <Card className="shadow-sm">
       <div className="flex items-center justify-between p-6 pb-0">
         <h2 className="text-lg font-semibold">Recent Activity</h2>
-        <Link href="/rentals">
-          <a className="text-sm text-primary-600 dark:text-primary-400 hover:underline">
-            View all
-          </a>
+        <Link href="/rentals" className="text-sm text-primary-600 dark:text-primary-400 hover:underline">
+          View all
         </Link>
       </div>
       <CardContent className="p-6">

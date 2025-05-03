@@ -27,8 +27,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useState } from "react";
-import { ShieldCheck } from "lucide-react";
+import { ShieldCheck, Info } from "lucide-react";
 import { CarInsuranceDialog } from "./CarInsuranceDialog";
+import { CarDetailsDialog } from "./CarDetailsDialog";
 
 interface Car {
   id: number;
@@ -57,6 +58,7 @@ export default function CarsList({ cars, isAdmin, onEdit, onDelete }: CarsListPr
   const [statusFilter, setStatusFilter] = useState("all");
   const [makeFilter, setMakeFilter] = useState("all");
   const [insuranceDialogOpen, setInsuranceDialogOpen] = useState(false);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [selectedCarId, setSelectedCarId] = useState<number | null>(null);
   
   const handleViewInsurance = (carId: number) => {
@@ -64,11 +66,18 @@ export default function CarsList({ cars, isAdmin, onEdit, onDelete }: CarsListPr
     setInsuranceDialogOpen(true);
   };
   
+  const handleViewDetails = (carId: number) => {
+    setSelectedCarId(carId);
+    setDetailsDialogOpen(true);
+  };
+  
   // Get unique locations for filter dropdown
-  const uniqueLocations = Array.from(new Set(cars.map(car => car.location?.name || "Unknown")));
+  const uniqueLocations = Array.from(new Set(cars.map(car => car.location?.name || "Unknown")))
+    .filter(location => location !== ''); // Filter out empty strings
   
   // Get unique makes for filter dropdown
-  const uniqueMakes = Array.from(new Set(cars.map(car => car.make)));
+  const uniqueMakes = Array.from(new Set(cars.map(car => car.make || "Unknown")))
+    .filter(make => make !== ''); // Filter out empty strings
   
   const filteredCars = cars.filter(car => {
     const matchesLocation = locationFilter === "all" || car.location?.name === locationFilter;
@@ -261,7 +270,7 @@ export default function CarsList({ cars, isAdmin, onEdit, onDelete }: CarsListPr
                               className="flex items-center" 
                               onClick={(e) => {
                                 e.preventDefault();
-                                window.open(`/cars/${car.id}`, '_blank');
+                                handleViewDetails(car.id);
                               }}
                             >
                               <Icons.view className="mr-2 h-4 w-4" />
@@ -367,6 +376,13 @@ export default function CarsList({ cars, isAdmin, onEdit, onDelete }: CarsListPr
         carId={selectedCarId}
         open={insuranceDialogOpen}
         onOpenChange={setInsuranceDialogOpen}
+      />
+      
+      {/* Car Details Dialog */}
+      <CarDetailsDialog
+        carId={selectedCarId as number}
+        open={detailsDialogOpen}
+        onOpenChange={setDetailsDialogOpen}
       />
     </>
   );

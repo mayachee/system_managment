@@ -5,8 +5,10 @@ import { Icons } from "@/components/ui/icons";
 import { Button } from "@/components/ui/button";
 import { MoonIcon, SunIcon, Search, Menu, X, Bell, HelpCircle, ChevronDown } from "lucide-react";
 import { useTheme } from "@/hooks/use-theme";
+import { useLocalization } from "@/hooks/use-localization";
 import { TimeThemeIndicator } from "@/components/TimeThemeIndicator";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { AIAssistant } from "@/components/Dashboard/AIAssistant";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,24 +28,27 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   const { user, logoutMutation } = useAuth();
   const { theme, setTheme } = useTheme();
+  const { t } = useLocalization();
   const [location] = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const navItems = [
-    { href: "/", label: "Dashboard", icon: <Icons.dashboard className="mr-3 text-lg" /> },
-    { href: "/rentals", label: "Rentals", icon: <Icons.calendar className="mr-3 text-lg" /> },
-    { href: "/cars", label: "Cars", icon: <Icons.car className="mr-3 text-lg" /> },
-    { href: "/insurance", label: "Insurance Overview", icon: <Icons.insurance className="mr-3 text-lg" /> },
+    { href: "/", label: t("nav.dashboard"), icon: <Icons.dashboard className="mr-3 text-lg" /> },
+    { href: "/rentals", label: t("nav.rentals"), icon: <Icons.calendar className="mr-3 text-lg" /> },
+    { href: "/cars", label: t("nav.cars"), icon: <Icons.car className="mr-3 text-lg" /> },
+    { href: "/maintenance", label: t("nav.maintenance"), icon: <Icons.tool className="mr-3 text-lg" /> },
+    { href: "/insurance", label: t("nav.insurance"), icon: <Icons.insurance className="mr-3 text-lg" /> },
+    { href: "/loyalty", label: t("nav.loyaltyProgram"), icon: <Icons.award className="mr-3 text-lg" /> },
   ];
 
   const adminNavItems = [
-    { href: "/locations", label: "Locations", icon: <Icons.location className="mr-3 text-lg" /> },
-    { href: "/users", label: "Users", icon: <Icons.userSettings className="mr-3 text-lg" /> },
+    { href: "/locations", label: t("nav.locations"), icon: <Icons.location className="mr-3 text-lg" /> },
+    { href: "/users", label: t("nav.users"), icon: <Icons.userSettings className="mr-3 text-lg" /> },
   ];
 
   const accountNavItems = [
-    { href: "/profile", label: "Profile", icon: <Icons.user className="mr-3 text-lg" /> },
-    { href: "/settings", label: "Settings", icon: <Icons.settings className="mr-3 text-lg" /> },
+    { href: "/profile", label: t("nav.profile"), icon: <Icons.user className="mr-3 text-lg" /> },
+    { href: "/settings", label: t("nav.settings"), icon: <Icons.settings className="mr-3 text-lg" /> },
   ];
 
   const isActive = (path: string) => {
@@ -100,9 +105,9 @@ export function AppLayout({ children }: AppLayoutProps) {
               <AvatarFallback>{user?.username ? getInitials(user.username) : "U"}</AvatarFallback>
             </Avatar>
             <div>
-              <p className="font-medium">{user?.username || "User"}</p>
+              <p className="font-medium">{user?.username || t('app.user')}</p>
               <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                {user?.role === "admin" ? "Administrator" : "User"}
+                {user?.role === "admin" ? t('app.administrator') : t('app.user')}
               </p>
             </div>
           </div>
@@ -111,22 +116,20 @@ export function AppLayout({ children }: AppLayoutProps) {
         {/* Navigation */}
         <nav className="flex-1 py-4 overflow-y-auto">
           <div className="px-4 mb-2 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-            Main
+            {t('nav.mainSection')}
           </div>
           
           {navItems.map((item) => (
-            <Link key={item.href} href={item.href}>
-              <a
-                className={cn(
-                  "flex items-center px-4 py-3 font-medium",
-                  isActive(item.href)
-                    ? "text-primary-600 bg-primary-50 dark:bg-primary-900/30 dark:text-primary-300 border-l-4 border-primary-500"
-                    : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800/60"
-                )}
-              >
-                {item.icon}
-                <span>{item.label}</span>
-              </a>
+            <Link key={item.href} href={item.href} 
+              className={cn(
+                "flex items-center px-4 py-3 font-medium",
+                isActive(item.href)
+                  ? "text-primary-600 bg-primary-50 dark:bg-primary-900/30 dark:text-primary-300 border-l-4 border-primary-500"
+                  : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800/60"
+              )}
+            >
+              {item.icon}
+              <span>{item.label}</span>
             </Link>
           ))}
           
@@ -134,43 +137,39 @@ export function AppLayout({ children }: AppLayoutProps) {
           {user?.role === "admin" && (
             <>
               <div className="px-4 mt-6 mb-2 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-                Admin
+                {t('nav.adminSection')}
               </div>
               {adminNavItems.map((item) => (
-                <Link key={item.href} href={item.href}>
-                  <a
-                    className={cn(
-                      "flex items-center px-4 py-3 font-medium",
-                      isActive(item.href)
-                        ? "text-primary-600 bg-primary-50 dark:bg-primary-900/30 dark:text-primary-300 border-l-4 border-primary-500"
-                        : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800/60"
-                    )}
-                  >
-                    {item.icon}
-                    <span>{item.label}</span>
-                  </a>
+                <Link key={item.href} href={item.href}
+                  className={cn(
+                    "flex items-center px-4 py-3 font-medium",
+                    isActive(item.href)
+                      ? "text-primary-600 bg-primary-50 dark:bg-primary-900/30 dark:text-primary-300 border-l-4 border-primary-500"
+                      : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800/60"
+                  )}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
                 </Link>
               ))}
             </>
           )}
           
           <div className="px-4 mt-6 mb-2 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
-            Account
+            {t('nav.accountSection')}
           </div>
           
           {accountNavItems.map((item) => (
-            <Link key={item.href} href={item.href}>
-              <a
-                className={cn(
-                  "flex items-center px-4 py-3 font-medium",
-                  isActive(item.href)
-                    ? "text-primary-600 bg-primary-50 dark:bg-primary-900/30 dark:text-primary-300 border-l-4 border-primary-500"
-                    : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800/60"
-                )}
-              >
-                {item.icon}
-                <span>{item.label}</span>
-              </a>
+            <Link key={item.href} href={item.href}
+              className={cn(
+                "flex items-center px-4 py-3 font-medium",
+                isActive(item.href)
+                  ? "text-primary-600 bg-primary-50 dark:bg-primary-900/30 dark:text-primary-300 border-l-4 border-primary-500"
+                  : "text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800/60"
+              )}
+            >
+              {item.icon}
+              <span>{item.label}</span>
             </Link>
           ))}
           
@@ -179,8 +178,26 @@ export function AppLayout({ children }: AppLayoutProps) {
             className="w-full flex items-center px-4 py-3 text-neutral-700 dark:text-neutral-300 hover:bg-neutral-100 dark:hover:bg-neutral-800/60 font-medium"
           >
             <Icons.logout className="mr-3 text-lg" />
-            <span>Logout</span>
+            <span>{t('nav.logout')}</span>
           </button>
+          
+          {/* AI Assistant Button - With special styling */}
+          <div className="px-4 mt-6 mb-2 flex items-center">
+            <div className="h-px flex-1 bg-neutral-200 dark:bg-neutral-700"></div>
+            <span className="mx-2 text-xs font-semibold text-neutral-500 dark:text-neutral-400 uppercase tracking-wider">
+              {t('nav.aiAssistant') || "AI Assistant"}
+            </span>
+            <div className="h-px flex-1 bg-neutral-200 dark:bg-neutral-700"></div>
+          </div>
+          <div className="px-4 py-3">
+            <button
+              onClick={() => document.getElementById('ai-assistant-trigger')?.click()}
+              className="w-full flex items-center justify-center gap-2 rounded-md bg-gradient-to-r from-primary to-primary/90 text-white px-4 py-2.5 font-medium hover:shadow-md transition-all animate-pulse hover:animate-none"
+            >
+              <Icons.bot className="h-5 w-5" />
+              <span>{t('nav.openAIAssistant') || "Open Assistant"}</span>
+            </button>
+          </div>
         </nav>
       </aside>
 
@@ -201,7 +218,7 @@ export function AppLayout({ children }: AppLayoutProps) {
               <div className="relative w-64 hidden md:block">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-neutral-500 dark:text-neutral-400" />
                 <Input 
-                  placeholder="Search..." 
+                  placeholder={`${t('app.search')}...`}
                   className="pl-10 pr-4 py-2 w-full rounded-md"
                 />
               </div>
@@ -223,7 +240,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Toggle theme</p>
+                  <p>{t('app.toggleTheme')}</p>
                 </TooltipContent>
               </Tooltip>
               
@@ -239,7 +256,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Notifications</p>
+                  <p>{t('app.notifications')}</p>
                 </TooltipContent>
               </Tooltip>
               
@@ -254,7 +271,7 @@ export function AppLayout({ children }: AppLayoutProps) {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>Help</p>
+                  <p>{t('app.help')}</p>
                 </TooltipContent>
               </Tooltip>
               
@@ -265,20 +282,20 @@ export function AppLayout({ children }: AppLayoutProps) {
                     <Avatar className="w-8 h-8 bg-primary-100 dark:bg-primary-900 text-primary-600 dark:text-primary-300">
                       <AvatarFallback>{user?.username ? getInitials(user.username) : "U"}</AvatarFallback>
                     </Avatar>
-                    <span className="hidden lg:block text-sm font-medium">{user?.username || "User"}</span>
+                    <span className="hidden lg:block text-sm font-medium">{user?.username || t('app.user')}</span>
                     <ChevronDown className="h-4 w-4 text-neutral-500" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
                   <Link href="/profile">
-                    <DropdownMenuItem className="cursor-pointer">Profile</DropdownMenuItem>
+                    <DropdownMenuItem className="cursor-pointer">{t('nav.profile')}</DropdownMenuItem>
                   </Link>
                   <Link href="/settings">
-                    <DropdownMenuItem className="cursor-pointer">Settings</DropdownMenuItem>
+                    <DropdownMenuItem className="cursor-pointer">{t('nav.settings')}</DropdownMenuItem>
                   </Link>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout} className="cursor-pointer">
-                    Logout
+                    {t('nav.logout')}
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -290,7 +307,8 @@ export function AppLayout({ children }: AppLayoutProps) {
         <main className="flex-1 overflow-y-auto bg-neutral-50 dark:bg-neutral-900 p-4 md:p-6 relative">
           {children}
           
-          {/* Floating theme toggle removed to keep light mode */}
+          {/* AI Assistant */}
+          <AIAssistant />
         </main>
       </div>
     </div>

@@ -1,0 +1,31 @@
+[vite] connecting...
+[vite] connected.
+Stored theme at startup: light
+Warning: validateDOMNesting(...): <a> cannot appear as a descendant of &lt;a&gt;.
+    at a
+    at a
+    at https://701b73ec-e855-4090-a34b-ad4ac62de337-00-paxdbe9j9qv1.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=1095b0c0:337:18
+    at nav
+    at aside
+    at div
+    at AppLayout (https://701b73ec-e855-4090-a34b-ad4ac62de337-00-paxdbe9j9qv1.picard.replit.dev/src/components/AppLayout.tsx:38:29)
+    at InsurancePage (https://701b73ec-e855-4090-a34b-ad4ac62de337-00-paxdbe9j9qv1.picard.replit.dev/src/pages/insurance-page.tsx?t=1746284576615:32:20)
+    at Route (https://701b73ec-e855-4090-a34b-ad4ac62de337-00-paxdbe9j9qv1.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=1095b0c0:323:16)
+    at ProtectedRoute (https://701b73ec-e855-4090-a34b-ad4ac62de337-00-paxdbe9j9qv1.picard.replit.dev/src/lib/protected-route.tsx:22:3)
+    at Switch (https://701b73ec-e855-4090-a34b-ad4ac62de337-00-paxdbe9j9qv1.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=1095b0c0:379:17)
+    at Router
+    at AuthProvider (https://701b73ec-e855-4090-a34b-ad4ac62de337-00-paxdbe9j9qv1.picard.replit.dev/src/hooks/use-auth.tsx:26:32)
+    at LocalizationProvider (https://701b73ec-e855-4090-a34b-ad4ac62de337-00-paxdbe9j9qv1.picard.replit.dev/src/hooks/use-localization.tsx:592:3)
+    at ThemeProvider (https://701b73ec-e855-4090-a34b-ad4ac62de337-00-paxdbe9j9qv1.picard.replit.dev/src/hooks/use-theme.tsx:79:3)
+    at Provider (https://701b73ec-e855-4090-a34b-ad4ac62de337-00-paxdbe9j9qv1.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-OXZDJRWN.js?v=1095b0c0:38:15)
+    at TooltipProvider (https://701b73ec-e855-4090-a34b-ad4ac62de337-00-paxdbe9j9qv1.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=1095b0c0:62:5)
+    at QueryClientProvider (https://701b73ec-e855-4090-a34b-ad4ac62de337-00-paxdbe9j9qv1.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=1095b0c0:2805:3)
+    at App
+    at ThemeProvider (https://701b73ec-e855-4090-a34b-ad4ac62de337-00-paxdbe9j9qv1.picard.replit.dev/src/hooks/use-theme.tsx?v=4m1NGqj0-utqWNofQG2co:79:3)
+Insurance creation error: 
+Error {}
+message: "400: {"message":"Validation error: Expected string, received number at \"premium\"; Expected date, received string at \"startDate\"; Expected date, received string at \"endDate\"; Expected string, received number at \"deductible\"; Expected string, received number at \"coverageLimit\""}"
+stack: "Error: 400: {"message":"Validation error: Expected string, received number at \"premium\"; Expected date, received string at \"startDate\"; Expected date, received string at \"endDate\"; Expected string, received number at \"deductible\"; Expected string, received number at \"coverageLimit\""}↵ at throwIfResNotOk (https://701b73ec-e855-4090-a34b-ad4ac62de337-00-paxdbe9j9qv1.picard.replit.dev/src/lib/queryClient.ts:5:11)↵ at async apiRequest (https://701b73ec-e855-4090-a34b-ad4ac62de337-00-paxdbe9j9qv1.picard.replit.dev/src/lib/queryClient.ts:15:3)↵ at async Object.mutationFn (https://701b73ec-e855-4090-a34b-ad4ac62de337-00-paxdbe9j9qv1.picard.replit.dev/src/components/Insurance/AddInsuranceDialog.tsx?t=1746284576615:157:24)"
+get stack: ƒ ()
+set stack: ƒ ()
+[[Prototype]]: Object

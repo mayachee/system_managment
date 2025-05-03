@@ -1,40 +1,38 @@
 version: '3.8'
-
 services:
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: carrentalsystem
+      POSTGRES_PASSWORD: carrentalsystem
+      POSTGRES_DB: carrentalsystem
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U carrentalsystem"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   app:
     build:
       context: .
-      dockerfile: Dockerfile
-    ports:
-      - "3000:3000"
+      dockerfile: Dockerfile.dev
     environment:
-      - NODE_ENV=production
-      - DATABASE_URL=postgres://postgres:postgres@db:5432/car_rental
-      - SESSION_SECRET=your_super_secret_key_change_in_production
-    depends_on:
-      - db
-    restart: unless-stopped
-    networks:
-      - app-network
-
-  db:
-    image: postgres:15-alpine
-    environment:
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_DB=car_rental
+      - DATABASE_URL=postgresql://carrentalsystem:carrentalsystem@postgres:5432/carrentalsystem
+      - NODE_ENV=development
+      - SESSION_SECRET=dev_secret_change_in_production
     ports:
-      - "5432:5432"
+      - "5000:5000"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
-    networks:
-      - app-network
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: npm run dev
 
 volumes:
   postgres_data:
-    driver: local
-
-networks:
-  app-network:
-    driver: bridge

@@ -13,9 +13,14 @@ import UsersPage from "@/pages/users-page";
 import ProfilePage from "@/pages/profile-page";
 import SettingsPage from "@/pages/settings-page";
 import InsurancePage from "@/pages/insurance-page";
+import MaintenancePage from "@/pages/maintenance-page";
+import LoyaltyProgramPage from "@/pages/loyalty-program-page";
+import VehicleHealthPage from "@/pages/vehicle-health-page";
 import { ThemeSuggestion } from "@/components/ThemeSuggestion";
 import { ProtectedRoute } from "./lib/protected-route";
 import { AuthProvider } from "./hooks/use-auth";
+import { ThemeProvider } from "./hooks/use-theme";
+import { LocalizationProvider } from "./hooks/use-localization";
 
 function Router() {
   return (
@@ -26,6 +31,9 @@ function Router() {
       <ProtectedRoute path="/rentals" component={RentalsPage} />
       <ProtectedRoute path="/insurance" component={InsurancePage} />
       <ProtectedRoute path="/locations" component={LocationsPage} />
+      <ProtectedRoute path="/maintenance" component={MaintenancePage} />
+      <ProtectedRoute path="/vehicle-health" component={VehicleHealthPage} />
+      <ProtectedRoute path="/loyalty" component={LoyaltyProgramPage} />
       <ProtectedRoute path="/users" component={UsersPage} />
       <ProtectedRoute path="/profile" component={ProfilePage} />
       <ProtectedRoute path="/settings" component={SettingsPage} />
@@ -38,11 +46,15 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AuthProvider>
-          <Toaster />
-          {/* ThemeSuggestion disabled to keep light mode */}
-          <Router />
-        </AuthProvider>
+        <ThemeProvider>
+          <LocalizationProvider>
+            <AuthProvider>
+              <Toaster />
+              <ThemeSuggestion /> 
+              <Router />
+            </AuthProvider>
+          </LocalizationProvider>
+        </ThemeProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

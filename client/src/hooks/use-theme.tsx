@@ -23,6 +23,8 @@ type ThemeProviderState = {
   hasSuggestion: boolean;
   autoThemeSwitching: boolean;
   toggleAutoThemeSwitching: (value: boolean) => void;
+  transitionDuration: number;
+  isTransitioning: boolean;
 };
 
 const initialState: ThemeProviderState = {
@@ -34,7 +36,9 @@ const initialState: ThemeProviderState = {
   applyTimeSuggestion: () => null,
   hasSuggestion: false,
   autoThemeSwitching: false,
-  toggleAutoThemeSwitching: () => null
+  toggleAutoThemeSwitching: () => null,
+  transitionDuration: 300,
+  isTransitioning: false
 };
 
 // Function to safely get items from localStorage (handles cases where localStorage is unavailable)
@@ -109,18 +113,32 @@ export function ThemeProvider({
   // Always use light theme
   const [theme, setThemeState] = useState<Theme>("light");
   
-  // Force light theme on initialization
+  // State for tracking transition state
+  const [isTransitioning, setIsTransitioning] = useState<boolean>(false);
+  const transitionDuration = 300; // milliseconds, matching CSS
+  
+  // State to prevent transitions on initial load
+  const [isInitialized, setIsInitialized] = useState<boolean>(false);
+  
+  // Initialize theme from storage or default
   useEffect(() => {
-    setLocalStorageItem(storageKey, "light");
+    // Add preload class to prevent transitions during page load
+    document.documentElement.classList.add('preload');
     
-    // Remove dark classes from document
-    const root = window.document.documentElement;
-    root.classList.remove("dark");
-    root.classList.add("light");
-    root.dataset.theme = "light";
+    // Get stored theme or use default
+    const storedTheme = getLocalStorageItem(storageKey, defaultTheme);
+    setThemeState(storedTheme as Theme);
     
-    console.log("Forcing light theme");
-  }, []);
+    console.log("Stored theme at startup:", storedTheme);
+    
+    // Remove the preload class after a short delay to allow transitions after initial load
+    const timer = setTimeout(() => {
+      document.documentElement.classList.remove('preload');
+      setIsInitialized(true);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [storageKey, defaultTheme]);
   
   // State for suggested theme and reason
   const [suggestedTheme, setSuggestedTheme] = useState<Theme | null>(null);
@@ -138,8 +156,18 @@ export function ThemeProvider({
     return savedValue === "true";
   });
   
-  // Function to set the theme
+  // Function to set the theme with smooth transitions
   const setTheme = (newTheme: Theme) => {
+    // Only apply transitions if initialization is complete
+    if (isInitialized && theme !== newTheme) {
+      setIsTransitioning(true);
+      
+      // Reset transition state after animation completes
+      setTimeout(() => {
+        setIsTransitioning(false);
+      }, transitionDuration);
+    }
+    
     // Save to localStorage
     setLocalStorageItem(storageKey, newTheme);
     
@@ -238,21 +266,46 @@ export function ThemeProvider({
         : "light";
     }
     
-    // Add the appropriate class to the document
+    // For animated transitions:
+    // 1. First apply transition properties if not already part of stylesheet
+    if (isTransitioning) {
+      // Apply transition-active class if we're transitioning
+      root.classList.add('theme-transition-active');
+    }
+    
+    // 2. Change theme class
     root.classList.add(effectiveTheme);
     
-    // Store the effective theme as a data attribute for debugging
+    // 3. Store the effective theme as a data attribute
     root.dataset.theme = effectiveTheme;
+    
+    // 4. Remove transition class after animation is complete
+    if (isTransitioning) {
+      const timer = setTimeout(() => {
+        root.classList.remove('theme-transition-active');
+      }, transitionDuration + 50); // Add a small buffer
+      
+      return () => clearTimeout(timer);
+    }
     
     // Listen for system preference changes if using system theme
     if (theme === "system") {
       const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
       
       const handleChange = () => {
+        // Start transition
+        root.classList.add('theme-transition-active');
+        
+        // Change theme
         root.classList.remove("light", "dark");
         const newTheme = mediaQuery.matches ? "dark" : "light";
         root.classList.add(newTheme);
         root.dataset.theme = newTheme;
+        
+        // Remove transition class after animation
+        setTimeout(() => {
+          root.classList.remove('theme-transition-active');
+        }, transitionDuration + 50);
       };
       
       mediaQuery.addEventListener("change", handleChange);
@@ -261,7 +314,7 @@ export function ThemeProvider({
         mediaQuery.removeEventListener("change", handleChange);
       };
     }
-  }, [theme]);
+  }, [theme, isTransitioning]);
 
   const value = {
     theme,
@@ -272,7 +325,9 @@ export function ThemeProvider({
     applyTimeSuggestion,
     hasSuggestion,
     autoThemeSwitching,
-    toggleAutoThemeSwitching
+    toggleAutoThemeSwitching,
+    transitionDuration,
+    isTransitioning
   };
 
   return (

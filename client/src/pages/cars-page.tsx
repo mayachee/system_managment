@@ -4,8 +4,9 @@ import { AppLayout } from "@/components/AppLayout";
 import { useAuth } from "@/hooks/use-auth";
 import CarsList from "@/components/Cars/CarsList";
 import CarForm from "@/components/Cars/CarForm";
+import { CarSidebar } from "@/components/Cars/CarSidebar";
 import { Button } from "@/components/ui/button";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Grid, List } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { 
   Dialog,
@@ -20,12 +21,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 import { InsertCar } from "@shared/schema";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function CarsPage() {
   const { user } = useAuth();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCarId, setSelectedCarId] = useState<number | null>(null);
+  const [viewMode, setViewMode] = useState<"list" | "grid">("list");
   
   const isAdmin = user?.role === "admin";
   
@@ -93,6 +96,10 @@ export default function CarsPage() {
     }
   };
   
+  const handleSidebarCarSelect = (carId: number) => {
+    setSelectedCarId(carId);
+  };
+  
   // Type check and safely filter cars
   const filteredCars = Array.isArray(cars) 
     ? cars.filter((car: any) => {
@@ -130,6 +137,26 @@ export default function CarsPage() {
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
+            
+            <div className="flex items-center border rounded-md p-1 bg-background">
+              <Button 
+                variant={viewMode === "list" ? "default" : "ghost"} 
+                size="sm" 
+                className="px-2"
+                onClick={() => setViewMode("list")}
+              >
+                <List className="h-4 w-4" />
+              </Button>
+              <Button 
+                variant={viewMode === "grid" ? "default" : "ghost"} 
+                size="sm" 
+                className="px-2"
+                onClick={() => setViewMode("grid")}
+              >
+                <Grid className="h-4 w-4" />
+              </Button>
+            </div>
+            
             {isAdmin && (
               <Button onClick={handleAddNew}>
                 <Plus className="mr-2 h-4 w-4" />
@@ -152,12 +179,26 @@ export default function CarsPage() {
         {isLoading ? (
           <Skeleton className="h-[500px] w-full" />
         ) : (
-          <CarsList 
-            cars={filteredCars || []} 
-            isAdmin={isAdmin}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
+          <div className={viewMode === "list" ? "block" : "flex gap-6"}>
+            {viewMode === "grid" && (
+              <div className="w-1/3 max-w-xs">
+                <CarSidebar 
+                  onSelect={handleSidebarCarSelect}
+                  selectedCarId={selectedCarId}
+                  maxHeight="calc(100vh - 240px)"
+                />
+              </div>
+            )}
+            
+            <div className={viewMode === "grid" ? "flex-1" : "w-full"}>
+              <CarsList 
+                cars={filteredCars || []} 
+                isAdmin={isAdmin}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
+            </div>
+          </div>
         )}
       </div>
       
