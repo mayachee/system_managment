@@ -4,15 +4,15 @@ A comprehensive car rental management system that integrates advanced maintenanc
 
 ## Features
 
-- 🚗 Complete car inventory management
-- 📅 Rental reservation and tracking system
-- 🔧 Maintenance scheduling and history
-- 📍 Multiple location management
-- 👤 User management with role-based access control
-- 📊 Dashboard with analytics
-- 🏆 Loyalty program for customers
-- ⭐ Customer reviews
-- 🛡️ Vehicle insurance management
+- Complete car inventory management
+- Rental reservation and tracking system
+- Maintenance scheduling and history
+- Multiple location management
+- User management with role-based access control
+- Dashboard with analytics
+- Loyalty program for customers
+- Customer reviews
+- Vehicle insurance management
 
 ## System Requirements
 
