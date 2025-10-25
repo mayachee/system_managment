@@ -8,12 +8,14 @@ from cars.models import Car
 from rentals.models import Rental
 from authentication.models import LoginHistory, User
 
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def dashboard_stats(request):
+def dashboard_data(request):
     """
-    Get dashboard statistics - counts of cars, rentals, and users
+    Get all dashboard data in a single request
     """
+    # Stats
     total_cars = Car.objects.count()
     available_cars = Car.objects.filter(status='available').count()
     rented_cars = Car.objects.filter(status='rented').count()
@@ -24,8 +26,8 @@ def dashboard_stats(request):
     completed_rentals = Rental.objects.filter(status='completed').count()
     
     total_users = User.objects.count()
-    
-    return Response({
+
+    stats_data = {
         'cars': total_cars,
         'availableCars': available_cars,
         'rentedCars': rented_cars,
@@ -34,15 +36,9 @@ def dashboard_stats(request):
         'activeRentals': active_rentals,
         'completedRentals': completed_rentals,
         'users': total_users
-    })
+    }
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def dashboard_activity(request):
-    """
-    Get recent activity for the dashboard
-    """
-    # Get login history
+    # Activity
     login_activities = LoginHistory.objects.all().order_by('-timestamp')[:10]
     login_data = [
         {
@@ -54,7 +50,6 @@ def dashboard_activity(request):
         for login in login_activities
     ]
     
-    # Get recent rentals
     recent_rentals = Rental.objects.all().order_by('-start_date')[:10]
     rental_data = [
         {
@@ -69,19 +64,11 @@ def dashboard_activity(request):
         for rental in recent_rentals
     ]
     
-    # Combine all activities and sort by timestamp
     all_activities = login_data + rental_data
     all_activities.sort(key=lambda x: x['timestamp'], reverse=True)
-    
-    return Response(all_activities[:10])
+    activity_data = all_activities[:10]
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def popular_cars(request):
-    """
-    Get the most popular (most rented) cars
-    """
-    # Count rentals for each car
+    # Popular Cars
     car_rental_count = {}
     rentals = Rental.objects.all()
     
@@ -92,10 +79,8 @@ def popular_cars(request):
         else:
             car_rental_count[car_id] = 1
     
-    # Sort cars by rental count
     sorted_cars = sorted(car_rental_count.items(), key=lambda x: x[1], reverse=True)
     
-    # Get the top 5 cars
     popular_cars_data = []
     for car_id, rental_count in sorted_cars[:5]:
         car = Car.objects.get(id=car_id)
@@ -107,8 +92,13 @@ def popular_cars(request):
             'status': car.status,
             'rentalCount': rental_count
         })
-    
-    return Response(popular_cars_data)
+
+    return Response({
+        'stats': stats_data,
+        'activity': activity_data,
+        'popularCars': popular_cars_data
+    })
+
 
 @api_view(['GET'])
 @permission_classes([AllowAny])

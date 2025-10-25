@@ -4,7 +4,7 @@ from authentication.views import UserViewSet, LoginHistoryViewSet, LoginView, Lo
 from cars.views import CarViewSet
 from locations.views import LocationViewSet
 from rentals.views import RentalViewSet
-from api.views import dashboard_stats, dashboard_activity, popular_cars, connection_test
+from api.views import dashboard_data, connection_test
 
 # Create a router and register our viewsets with it
 router = DefaultRouter()
@@ -22,9 +22,7 @@ urlpatterns = [
     path('user/', CurrentUserView.as_view(), name='current-user'),
     
     # Dashboard endpoints
-    path('dashboard/stats/', dashboard_stats, name='dashboard-stats'),
-    path('dashboard/activity/', dashboard_activity, name='dashboard-activity'),
-    path('dashboard/popular-cars/', popular_cars, name='popular-cars'),
+    path('dashboard/', dashboard_data, name='dashboard-data'),
     
     # Test endpoint (no auth required)
     path('test-connection/', connection_test, name='test-connection'),
